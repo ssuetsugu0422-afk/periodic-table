@@ -26,7 +26,7 @@ h1 small{font-size:12px;font-weight:500;color:var(--ink2);margin-left:8px;letter
 .controls{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;align-items:center}
 .ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .ctl>span{font-size:12px;color:var(--ink2)}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow-x:auto;max-width:100%;background:var(--panel);scrollbar-width:none}
 .seg button{border:0;background:transparent;padding:5px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 main{max-width:1240px;margin:0 auto;padding:4px 16px 32px}
@@ -34,15 +34,15 @@ main{max-width:1240px;margin:0 auto;padding:4px 16px 32px}
 .table{display:grid;grid-template-columns:20px repeat(18,minmax(48px,1fr));grid-auto-rows:auto;gap:3px;min-width:900px}
 .ghead{font-size:11px;color:var(--ink2);text-align:center;align-self:end}
 .phead{font-size:11px;color:var(--ink2);display:flex;align-items:center;justify-content:center}
-.cell{position:relative;aspect-ratio:1/1.08;border-radius:6px;border:1px solid hsl(var(--h) var(--cellS) var(--cellLine));
+.cell{position:relative;aspect-ratio:1/1.08;overflow:hidden;border-radius:6px;border:1px solid hsl(var(--h) var(--cellS) var(--cellLine));
   background:hsl(var(--h) var(--cellS) var(--cellL));padding:3px 4px;cursor:pointer;text-align:left;display:flex;flex-direction:column;
   transition:transform .12s, opacity .2s, box-shadow .12s;min-width:0}
 .cell:hover,.cell:focus-visible{transform:scale(1.08);z-index:2;box-shadow:0 4px 14px rgba(0,0,0,.18);outline:none}
 .cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .cell .z{font-size:10px;line-height:1;color:var(--ink2)}
 .cell .sym{font-size:20px;font-weight:700;line-height:1.05;text-align:center;margin-top:2px}
-.cell .nm{font-size:9.5px;line-height:1.12;text-align:center;margin-top:auto;word-break:break-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.cell .nm.s{font-size:8.5px;letter-spacing:-.03em}
+.cell .nm{font-size:9.5px;line-height:1.2;height:1.2em;margin:auto -3px 0;white-space:nowrap;display:flex;justify-content:center}
+.cell .nm>span{display:inline-block;transform:scaleX(var(--sx,1));transform-origin:center}
 .cell.has::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.55}
 .cell.off{opacity:var(--dim)}
 .cell.ph{cursor:pointer;justify-content:center;align-items:center;text-align:center;font-size:10px;line-height:1.3}
@@ -302,7 +302,7 @@ function build(){
     const b=document.createElement("button");
     b.className="cell"; b.dataset.z=e.z;
     b.setAttribute("aria-label",`${e.z}番 ${e.sym} ${e.name}`);
-    b.innerHTML=`<span class="z">${e.z}</span><span class="sym">${e.sym}</span><span class="nm${e.name.length>5?" s":""}">${e.name}</span>`;
+    b.innerHTML=`<span class="z">${e.z}</span><span class="sym">${e.sym}</span><span class="nm"><span>${e.name}</span></span>`;
     b.addEventListener("click",()=>openCard(e.z));
     if(e.f) add(b, e.col+1, e.p===6?10:11); else add(b,e.g+1,e.p+1);
   }
@@ -438,11 +438,24 @@ function renderSummary(){
 
 // ---------- 画面の切り替え ----------
 const VIEWS=["table","flash","quiz"];
+// 元素名を1行に収める：はみ出す名前だけ文字を少し小さくし、さらに横方向に縮める
+function fitNames(){
+  table.querySelectorAll(".cell .nm").forEach(nm=>{
+    const sp=nm.firstElementChild; if(!sp) return;
+    nm.style.fontSize=""; sp.style.removeProperty("--sx");
+    const avail=nm.clientWidth; if(!avail) return;
+    let w=sp.offsetWidth;
+    for(const fs of ["8.5px","7.5px"]){ if(w<=avail) break; nm.style.fontSize=fs; w=sp.offsetWidth; }
+    if(w>avail) sp.style.setProperty("--sx",(avail/w).toFixed(3));
+  });
+}
+let fitTimer=null; window.addEventListener("resize",()=>{clearTimeout(fitTimer); fitTimer=setTimeout(fitNames,120);});
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fitNames);
 function showView(v){
   S.view=v; store.set("view",v);
   VIEWS.forEach(x=>document.getElementById("v-"+x).hidden = x!==v);
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));
-  if(v!=="table") refreshSetups();
+  if(v!=="table") refreshSetups(); else requestAnimationFrame(fitNames);
   paint();
 }
 document.getElementById("tabs").addEventListener("click",ev=>{const b=ev.target.closest("button"); if(b) showView(b.dataset.v);});
