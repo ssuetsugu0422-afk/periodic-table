@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>周期表 暗記アプリ</title>
+<style>
+:root{
+  --bg:#f7f6f2; --panel:#ffffff; --ink:#1d1d1f; --ink2:#5b5b63; --line:#d9d7d0; --accent:#1f5fbf;
+  --dim:.22; --cellL:88%; --cellS:62%; --cellLine:68%;
+  --shadow:0 10px 40px rgba(0,0,0,.18);
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","YuGothic","Noto Sans JP",Meiryo,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#16171a;--panel:#212226;--ink:#ececef;--ink2:#a4a4ad;--line:#3a3b40;--accent:#7fb0ff;
+    --cellL:26%;--cellS:32%;--cellLine:42%;--shadow:0 10px 40px rgba(0,0,0,.6);}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-size:15px;line-height:1.6}
+button{font:inherit;color:inherit}
+header{padding:16px 16px 8px;max-width:1240px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:.04em}
+h1 small{font-size:12px;font-weight:500;color:var(--ink2);margin-left:8px;letter-spacing:0}
+.lead{margin:0;color:var(--ink2);font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;align-items:center}
+.ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ctl>span{font-size:12px;color:var(--ink2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:transparent;padding:5px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+main{max-width:1240px;margin:0 auto;padding:4px 16px 32px}
+.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.table{display:grid;grid-template-columns:20px repeat(18,minmax(48px,1fr));grid-auto-rows:auto;gap:3px;min-width:900px}
+.ghead{font-size:11px;color:var(--ink2);text-align:center;align-self:end}
+.phead{font-size:11px;color:var(--ink2);display:flex;align-items:center;justify-content:center}
+.cell{position:relative;aspect-ratio:1/1.08;border-radius:6px;border:1px solid hsl(var(--h) var(--cellS) var(--cellLine));
+  background:hsl(var(--h) var(--cellS) var(--cellL));padding:3px 4px;cursor:pointer;text-align:left;display:flex;flex-direction:column;
+  transition:transform .12s, opacity .2s, box-shadow .12s;min-width:0}
+.cell:hover,.cell:focus-visible{transform:scale(1.08);z-index:2;box-shadow:0 4px 14px rgba(0,0,0,.18);outline:none}
+.cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.cell .z{font-size:10px;line-height:1;color:var(--ink2)}
+.cell .sym{font-size:20px;font-weight:700;line-height:1.05;text-align:center;margin-top:2px}
+.cell .nm{font-size:9.5px;line-height:1.12;text-align:center;margin-top:auto;word-break:break-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cell .nm.s{font-size:8.5px;letter-spacing:-.03em}
+.cell.has::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.55}
+.cell.off{opacity:var(--dim)}
+.cell.ph{cursor:pointer;justify-content:center;align-items:center;text-align:center;font-size:10px;line-height:1.3}
+.gap{grid-column:1/-1;height:10px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 8px;margin:14px 0 4px}
+.legend button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 10px 3px 6px;font-size:12.5px;cursor:pointer}
+.legend button i{width:14px;height:14px;border-radius:4px;background:hsl(var(--h) var(--cellS) var(--cellL));border:1px solid hsl(var(--h) var(--cellS) var(--cellLine))}
+.legend button[aria-pressed="true"]{outline:2px solid var(--ink)}
+.note{font-size:12px;color:var(--ink2);margin:6px 0 0}
+/* dialog */
+dialog{border:0;padding:0;border-radius:16px;max-width:min(720px,calc(100vw - 24px));width:100%;background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(10,10,14,.45)}
+.card{padding:20px 20px 16px;max-height:calc(100dvh - 40px);overflow-y:auto}
+.ctop{display:flex;gap:16px;align-items:flex-start}
+.tile{flex:none;width:104px;height:112px;border-radius:12px;border:2px solid hsl(var(--h) var(--cellS) var(--cellLine));background:hsl(var(--h) var(--cellS) var(--cellL));display:flex;flex-direction:column;padding:6px 8px}
+.tile .z{font-size:14px;color:var(--ink2);line-height:1}
+.tile .sym{font-size:44px;font-weight:700;text-align:center;line-height:1.1;margin-top:4px}
+.tile .nm{font-size:12px;text-align:center;margin-top:auto}
+.ctitle h2{margin:0;font-size:26px;line-height:1.2}
+.ctitle .en{color:var(--ink2);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.close{margin-left:auto;border:0;background:transparent;font-size:26px;line-height:1;cursor:pointer;color:var(--ink2);padding:0 4px}
+.sec{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.sec h3{font-size:13px;color:var(--ink2);margin:0 0 2px;font-weight:600}
+.sec p{margin:0 0 10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}
+.hs{display:none}
+body.high .hs{display:block}
+.badge{display:inline-block;font-size:10.5px;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:2px;font-weight:600}
+.flame{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:6px;border:1px solid var(--line)}
+.bohr{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.bohr svg{width:170px;height:170px;flex:none}
+.empty{color:var(--ink2);background:var(--bg);border-radius:10px;padding:12px 14px;margin-top:16px;font-size:14px}
+.nav{display:flex;justify-content:space-between;gap:8px;margin-top:16px}
+.nav button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:14px}
+.nav button:disabled{opacity:.35;cursor:default}
+
+.tabs{display:flex;gap:4px;margin-top:12px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:transparent;padding:8px 14px;font-size:14.5px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;color:var(--ink2)}
+.tabs button[aria-pressed="true"]{border-bottom-color:var(--accent);color:var(--ink);font-weight:700}
+body:not(.vtable) .tonly{display:none}
+.summary{margin:2px 0 10px;font-size:13px;color:var(--ink2)}
+.summary b{color:var(--ink)}
+.cell[data-m="good"] .z::after{content:" ✓";font-weight:700;color:var(--ink)}
+.cell[data-m="weak"] .z::after{content:" !";font-weight:700;color:var(--ink)}
+.setup,.session{max-width:560px;margin:8px auto 0}
+.setup h2{font-size:20px;margin:6px 0 2px}
+.field{display:flex;align-items:center;gap:10px;margin:14px 0;flex-wrap:wrap}
+.field>span{font-size:13px;color:var(--ink2);width:56px;flex:none}
+select{font:inherit;font-size:15px;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);max-width:100%}
+.poolinfo{font-size:13px;color:var(--ink2);margin:6px 0 12px}
+.primary{border:0;background:var(--accent);color:#fff;border-radius:12px;padding:12px 28px;font-size:16px;font-weight:700;cursor:pointer}
+@media (prefers-color-scheme:dark){.primary{color:#111}}
+.primary:disabled{opacity:.4;cursor:default}
+.sbar{display:flex;gap:12px;align-items:center;font-size:13px;color:var(--ink2);margin-top:8px}
+.sbar .link{margin-left:auto}
+.link{border:0;background:transparent;color:var(--accent);cursor:pointer;font-size:13px;padding:4px}
+.progress{height:6px;border-radius:3px;background:var(--line);margin:8px 0 16px;overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+.fcard{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:260px;border-radius:18px;border:2px solid hsl(var(--h) var(--cellS) var(--cellLine));background:hsl(var(--h) var(--cellS) var(--cellL));cursor:pointer;padding:20px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.fcard .q{font-size:64px;font-weight:700;line-height:1.1}
+.fcard .q.txt{font-size:38px}
+.fcard .sub{font-size:13px;color:var(--ink2);margin-top:12px}
+.fcard .a{font-size:30px;font-weight:700;line-height:1.3}
+.fcard .a small{display:block;font-size:14px;font-weight:400;color:var(--ink2);margin-top:4px}
+.fcard .use{font-size:14px;margin-top:12px;max-width:420px}
+.fbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.fbtns button{border-radius:12px;padding:14px;font-size:17px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--panel)}
+.fbtns button small{font-weight:400;color:var(--ink2);font-size:12px}
+.fbtns .got{border-color:hsl(140 45% 45%);}
+.fbtns .again{border-color:hsl(4 60% 60%);}
+.fbtns button:disabled{opacity:.35}
+.keys{font-size:12px;color:var(--ink2);text-align:center}
+.qtext{font-size:20px;font-weight:700;line-height:1.5;margin:4px 0 14px;min-height:60px}
+.qtext .big{display:block;font-size:56px;line-height:1.2;margin-top:4px}
+.qtext .hintline{display:block;font-size:13px;font-weight:400;color:var(--ink2)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choices button{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:14px 10px;font-size:17px;cursor:pointer;min-height:58px}
+.choices button:hover:not(:disabled){border-color:var(--accent)}
+.choices button.ok{background:hsl(140 55% var(--cellL));border-color:hsl(140 45% 45%);font-weight:700}
+.choices button.ng{background:hsl(4 70% var(--cellL));border-color:hsl(4 60% 55%)}
+.choices button:disabled{cursor:default;color:var(--ink)}
+.feedback{margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.feedback .res{font-weight:700;font-size:16px}
+.feedback .res.ok{color:hsl(140 50% 34%)} .feedback .res.ng{color:hsl(4 65% 46%)}
+@media (prefers-color-scheme:dark){.feedback .res.ok{color:hsl(140 50% 62%)} .feedback .res.ng{color:hsl(4 75% 68%)}}
+.feedback p{margin:4px 0}
+.fbrow{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.done{text-align:center}
+.done .score{font-size:44px;font-weight:700;margin:10px 0 0}
+.mlist{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:12px 0}
+.mlist button{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:4px 10px;cursor:pointer}
+.donebtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.ghost{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:11px 20px;font-size:15px;cursor:pointer}
+.reset{margin-top:6px}
+@media (max-width:600px){
+  .choices{grid-template-columns:1fr}
+  .qtext .big{font-size:46px}
+  .fcard{min-height:220px}.fcard .q{font-size:54px}
+  .tabs button{padding:8px 10px;font-size:14px}
+  header{padding:12px 12px 4px} main{padding:4px 12px 24px}
+  h1{font-size:19px}
+  .grid2{grid-template-columns:1fr}
+  .tile{width:84px;height:92px}.tile .sym{font-size:34px}
+  .ctitle h2{font-size:22px}
+  .card{padding:16px 14px 12px}
+  .cell{padding:2px 3px}.cell .sym{font-size:17px}
+  .hint{display:block}
+}
+.hint{display:none;font-size:12px;color:var(--ink2);margin:0 0 6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>周期表 暗記アプリ<small>試作版 v0.9</small></h1>
+  <p class="lead">元素をタップすると詳しいカードが開きます。</p>
+  <nav class="tabs" id="tabs" aria-label="画面の切り替え">
+    <button data-v="table">周期表</button><button data-v="flash">カードで覚える</button><button data-v="quiz">4択クイズ</button>
+  </nav>
+  <div class="controls">
+    <div class="ctl"><span>表示</span><div class="seg" id="levelSeg">
+      <button data-v="junior">中学</button><button data-v="high">高校</button></div></div>
+    <div class="ctl tonly"><span>色分け</span><div class="seg" id="colorSeg">
+      <button data-v="cat">分類</button><button data-v="state">常温の状態</button><button data-v="metal">金属・非金属</button><button data-v="type">典型・遷移</button><button data-v="mastery">覚えた度</button></div></div>
+    <div class="ctl tonly"><span>範囲</span><div class="seg" id="rangeSeg">
+      <button data-v="20">1〜20番</button><button data-v="36">1〜36番</button><button data-v="detail">重要46</button><button data-v="all">すべて</button></div></div>
+  </div>
+</header>
+<main>
+<section id="v-table">
+  <p class="summary" id="summary"></p>
+  <p class="hint">← 周期表は横にスクロールできます →</p>
+  <div class="scroller"><div class="table" id="table" role="grid" aria-label="周期表"></div></div>
+  <div class="legend" id="legend"></div>
+  <p class="note" id="legendNote"></p>
+</section>
+
+<section id="v-flash" hidden>
+  <div class="setup" id="flashSetup">
+    <h2>カードで覚える</h2>
+    <p class="lead">表を見て答えを思い浮かべ、タップして裏返します。「覚えた」まで同じカードが何度も出ます。</p>
+    <label class="field"><span>範囲</span><select id="flashRange" class="rangeSel"></select></label>
+    <div class="field"><span>出題</span><div class="seg" id="flashDir">
+      <button data-v="sym">記号 → 名称</button><button data-v="name">名称 → 記号</button><button data-v="num">番号 → 元素</button><button data-v="mix">まぜる</button></div></div>
+    <p class="poolinfo" id="flashInfo"></p>
+    <button class="primary" id="flashStart">はじめる</button>
+  </div>
+  <div class="session" id="flashSession" hidden>
+    <div class="sbar"><span id="flashLeft"></span><button class="link" id="flashQuit">やめる</button></div>
+    <div class="progress"><i id="flashBar"></i></div>
+    <button class="fcard" id="fcard" aria-live="polite"></button>
+    <div class="fbtns"><button class="again" id="fAgain">まだ <small>←</small></button><button class="got" id="fGot">覚えた <small>→</small></button></div>
+    <p class="keys">キーボード：スペースで裏返す、← まだ、→ 覚えた</p>
+  </div>
+  <div class="session done" id="flashDone" hidden></div>
+</section>
+
+<section id="v-quiz" hidden>
+  <div class="setup" id="quizSetup">
+    <h2>4択クイズ</h2>
+    <p class="lead">結果は元素ごとに記録され、周期表の「覚えた度」に反映されます。</p>
+    <label class="field"><span>範囲</span><select id="quizRange" class="rangeSel"></select></label>
+    <label class="field"><span>形式</span><select id="quizType"></select></label>
+    <div class="field"><span>問題数</span><div class="seg" id="quizCount">
+      <button data-v="10">10問</button><button data-v="20">20問</button><button data-v="all">範囲すべて</button></div></div>
+    <p class="poolinfo" id="quizInfo"></p>
+    <button class="primary" id="quizStart">はじめる</button>
+  </div>
+  <div class="session" id="quizSession" hidden>
+    <div class="sbar"><span id="quizNo"></span><span id="quizScore"></span><button class="link" id="quizQuit">やめる</button></div>
+    <div class="progress"><i id="quizBar"></i></div>
+    <div class="qtext" id="qtext"></div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback" hidden></div>
+  </div>
+  <div class="session done" id="quizDone" hidden></div>
+</section>
+</main>
+
+<dialog id="dlg" aria-labelledby="cName"><div class="card" id="card"></div></dialog>
+
+<script>
+const BASIC=[[1, "H", "水素", "Hydrogen"], [2, "He", "ヘリウム", "Helium"], [3, "Li", "リチウム", "Lithium"], [4, "Be", "ベリリウム", "Beryllium"], [5, "B", "ホウ素", "Boron"], [6, "C", "炭素", "Carbon"], [7, "N", "窒素", "Nitrogen"], [8, "O", "酸素", "Oxygen"], [9, "F", "フッ素", "Fluorine"], [10, "Ne", "ネオン", "Neon"], [11, "Na", "ナトリウム", "Sodium"], [12, "Mg", "マグネシウム", "Magnesium"], [13, "Al", "アルミニウム", "Aluminium"], [14, "Si", "ケイ素", "Silicon"], [15, "P", "リン", "Phosphorus"], [16, "S", "硫黄", "Sulfur"], [17, "Cl", "塩素", "Chlorine"], [18, "Ar", "アルゴン", "Argon"], [19, "K", "カリウム", "Potassium"], [20, "Ca", "カルシウム", "Calcium"], [21, "Sc", "スカンジウム", "Scandium"], [22, "Ti", "チタン", "Titanium"], [23, "V", "バナジウム", "Vanadium"], [24, "Cr", "クロム", "Chromium"], [25, "Mn", "マンガン", "Manganese"], [26, "Fe", "鉄", "Iron"], [27, "Co", "コバルト", "Cobalt"], [28, "Ni", "ニッケル", "Nickel"], [29, "Cu", "銅", "Copper"], [30, "Zn", "亜鉛", "Zinc"], [31, "Ga", "ガリウム", "Gallium"], [32, "Ge", "ゲルマニウム", "Germanium"], [33, "As", "ヒ素", "Arsenic"], [34, "Se", "セレン", "Selenium"], [35, "Br", "臭素", "Bromine"], [36, "Kr", "クリプトン", "Krypton"], [37, "Rb", "ルビジウム", "Rubidium"], [38, "Sr", "ストロンチウム", "Strontium"], [39, "Y", "イットリウム", "Yttrium"], [40, "Zr", "ジルコニウム", "Zirconium"], [41, "Nb", "ニオブ", "Niobium"], [42, "Mo", "モリブデン", "Molybdenum"], [43, "Tc", "テクネチウム", "Technetium"], [44, "Ru", "ルテニウム", "Ruthenium"], [45, "Rh", "ロジウム", "Rhodium"], [46, "Pd", "パラジウム", "Palladium"], [47, "Ag", "銀", "Silver"], [48, "Cd", "カドミウム", "Cadmium"], [49, "In", "インジウム", "Indium"], [50, "Sn", "スズ", "Tin"], [51, "Sb", "アンチモン", "Antimony"], [52, "Te", "テルル", "Tellurium"], [53, "I", "ヨウ素", "Iodine"], [54, "Xe", "キセノン", "Xenon"], [55, "Cs", "セシウム", "Caesium"], [56, "Ba", "バリウム", "Barium"], [57, "La", "ランタン", "Lanthanum"], [58, "Ce", "セリウム", "Cerium"], [59, "Pr", "プラセオジム", "Praseodymium"], [60, "Nd", "ネオジム", "Neodymium"], [61, "Pm", "プロメチウム", "Promethium"], [62, "Sm", "サマリウム", "Samarium"], [63, "Eu", "ユウロピウム", "Europium"], [64, "Gd", "ガドリニウム", "Gadolinium"], [65, "Tb", "テルビウム", "Terbium"], [66, "Dy", "ジスプロシウム", "Dysprosium"], [67, "Ho", "ホルミウム", "Holmium"], [68, "Er", "エルビウム", "Erbium"], [69, "Tm", "ツリウム", "Thulium"], [70, "Yb", "イッテルビウム", "Ytterbium"], [71, "Lu", "ルテチウム", "Lutetium"], [72, "Hf", "ハフニウム", "Hafnium"], [73, "Ta", "タンタル", "Tantalum"], [74, "W", "タングステン", "Tungsten"], [75, "Re", "レニウム", "Rhenium"], [76, "Os", "オスミウム", "Osmium"], [77, "Ir", "イリジウム", "Iridium"], [78, "Pt", "白金", "Platinum"], [79, "Au", "金", "Gold"], [80, "Hg", "水銀", "Mercury"], [81, "Tl", "タリウム", "Thallium"], [82, "Pb", "鉛", "Lead"], [83, "Bi", "ビスマス", "Bismuth"], [84, "Po", "ポロニウム", "Polonium"], [85, "At", "アスタチン", "Astatine"], [86, "Rn", "ラドン", "Radon"], [87, "Fr", "フランシウム", "Francium"], [88, "Ra", "ラジウム", "Radium"], [89, "Ac", "アクチニウム", "Actinium"], [90, "Th", "トリウム", "Thorium"], [91, "Pa", "プロトアクチニウム", "Protactinium"], [92, "U", "ウラン", "Uranium"], [93, "Np", "ネプツニウム", "Neptunium"], [94, "Pu", "プルトニウム", "Plutonium"], [95, "Am", "アメリシウム", "Americium"], [96, "Cm", "キュリウム", "Curium"], [97, "Bk", "バークリウム", "Berkelium"], [98, "Cf", "カリホルニウム", "Californium"], [99, "Es", "アインスタイニウム", "Einsteinium"], [100, "Fm", "フェルミウム", "Fermium"], [101, "Md", "メンデレビウム", "Mendelevium"], [102, "No", "ノーベリウム", "Nobelium"], [103, "Lr", "ローレンシウム", "Lawrencium"], [104, "Rf", "ラザホージウム", "Rutherfordium"], [105, "Db", "ドブニウム", "Dubnium"], [106, "Sg", "シーボーギウム", "Seaborgium"], [107, "Bh", "ボーリウム", "Bohrium"], [108, "Hs", "ハッシウム", "Hassium"], [109, "Mt", "マイトネリウム", "Meitnerium"], [110, "Ds", "ダームスタチウム", "Darmstadtium"], [111, "Rg", "レントゲニウム", "Roentgenium"], [112, "Cn", "コペルニシウム", "Copernicium"], [113, "Nh", "ニホニウム", "Nihonium"], [114, "Fl", "フレロビウム", "Flerovium"], [115, "Mc", "モスコビウム", "Moscovium"], [116, "Lv", "リバモリウム", "Livermorium"], [117, "Ts", "テネシン", "Tennessine"], [118, "Og", "オガネソン", "Oganesson"]];
+const DETAIL={"1": {"en": "Hydrogen", "origin": "ギリシャ語 hydro（水）＋genes（生む）＝「水を生むもの」", "cls": "非金属（典型元素）", "state": "気体", "mass": "1.008", "config": "K1", "val": "1", "ion": "H⁺", "flame": "—", "occ": "単体は気体 H₂。宇宙で最も多い元素。地球上では主に水 H₂O として存在", "use": "燃料電池自動車の燃料、ロケット燃料、アンモニアの原料", "comp": "H₂O（水）、HCl（塩化水素）、NH₃（アンモニア）、CH₄（メタン）", "tip": "最も軽い元素。語呂「水兵リーベ…」の「水」", "year": "1766", "who": "キャベンディッシュ"}, "2": {"en": "Helium", "origin": "ギリシャ語 helios（太陽）。太陽光のスペクトルから見つかった", "cls": "貴ガス（非金属・典型元素）", "state": "気体", "mass": "4.003", "config": "K2", "val": "0", "ion": "—", "flame": "—", "occ": "大気中にごく微量。天然ガスから採取。宇宙で2番目に多い元素", "use": "風船・飛行船、MRIの超伝導磁石の冷却、声が高くなるガス（酸素と混合）", "comp": "化合物をほとんど作らない", "tip": "沸点 −269℃ は全物質で最低。語呂の「兵」", "year": "1868", "who": "ジャンサン、ロッキャー（太陽光のスペクトルから）"}, "3": {"en": "Lithium", "origin": "ギリシャ語 lithos（石）。鉱石から見つかった", "cls": "アルカリ金属（典型元素・金属）", "state": "固体", "mass": "6.94", "config": "K2 L1", "val": "1", "ion": "Li⁺", "flame": "赤", "occ": "単体は天然に存在しない。鉱石や塩湖のかん水中に塩として存在", "use": "リチウムイオン電池（スマートフォン・電気自動車）、耐熱ガラス", "comp": "Li₂CO₃（炭酸リチウム）、LiCoO₂（電池の正極材料）、LiOH", "tip": "最も軽い金属で水に浮く（ただし水と反応する）。語呂の「リー」", "year": "1817", "who": "アルフェドソン"}, "4": {"en": "Beryllium", "origin": "鉱物 beryl（緑柱石）から", "cls": "アルカリ土類金属（典型元素・金属）", "state": "固体", "mass": "9.012", "config": "K2 L2", "val": "2", "ion": "Be²⁺", "flame": "—（示さない）", "occ": "緑柱石（エメラルド・アクアマリンの原石）などの鉱物中に存在", "use": "ばね・電気接点用のベリリウム銅合金、X線管の窓材", "comp": "BeO（酸化ベリリウム）、BeCl₂", "tip": "化合物は毒性が強い。語呂の「ベ」", "year": "1798", "who": "ボークラン（酸化物として）"}, "5": {"en": "Boron", "origin": "ホウ砂（borax）から。アラビア語 buraq に由来", "cls": "非金属（典型元素・半金属）", "state": "固体", "mass": "10.81", "config": "K2 L3", "val": "3", "ion": "—", "flame": "—", "occ": "ホウ砂やホウ酸塩の鉱物として存在", "use": "ホウ酸（ゴキブリ用ホウ酸団子・目の洗浄）、耐熱ガラス（ホウケイ酸ガラス）、半導体への添加", "comp": "H₃BO₃（ホウ酸）、Na₂B₄O₇（ホウ砂）、BN（窒化ホウ素）", "tip": "スライム作りにホウ砂を使う。語呂「僕の」（B・C・N・O）", "year": "1808", "who": "ゲイ＝リュサック、テナール、デービー"}, "6": {"en": "Carbon", "origin": "ラテン語 carbo（木炭）", "cls": "非金属（典型元素）", "state": "固体", "mass": "12.01", "config": "K2 L4", "val": "4", "ion": "—", "flame": "—", "occ": "単体はダイヤモンド・黒鉛。大気中の CO₂、石灰石（CaCO₃）、生物の体をつくる有機物", "use": "鉛筆の芯（黒鉛）、ダイヤモンド、活性炭、炭素繊維（ラケット・航空機）", "comp": "CO₂（二酸化炭素）、CO（一酸化炭素）、CH₄（メタン）、CaCO₃、すべての有機化合物", "tip": "同素体（ダイヤモンド・黒鉛・フラーレン・カーボンナノチューブ）が多い。語呂「僕の」（B・C・N・O）", "year": "古代", "who": "—"}, "7": {"en": "Nitrogen", "origin": "ギリシャ語 nitron（硝石）＋genes。和名は「窒息させる素」", "cls": "非金属（典型元素）", "state": "気体", "mass": "14.01", "config": "K2 L5", "val": "5", "ion": "—", "flame": "—", "occ": "空気の約78%を占める（N₂）。生物のタンパク質・DNA に含まれる", "use": "スナック菓子の袋の充填ガス（酸化防止）、液体窒素による冷却、肥料", "comp": "NH₃（アンモニア）、HNO₃（硝酸）、NO₂（二酸化窒素）、硝酸塩", "tip": "空気中で最も多い成分。語呂「僕の」（B・C・N・O）", "year": "1772", "who": "ラザフォード（ダニエル）"}, "8": {"en": "Oxygen", "origin": "ギリシャ語 oxys（酸っぱい）＋genes ＝「酸を生むもの」（誤解から命名）", "cls": "非金属（典型元素）", "state": "気体", "mass": "16.00", "config": "K2 L6", "val": "6", "ion": "O²⁻", "flame": "—", "occ": "空気の約21%（O₂）。地殻で最も多い元素（水・岩石のケイ酸塩）", "use": "医療用酸素、製鉄、ガス溶接、生物の呼吸", "comp": "H₂O（水）、CO₂、SiO₂（二酸化ケイ素）、多くの金属酸化物", "tip": "同素体にオゾン O₃。語呂「僕の」（B・C・N・O）", "year": "1774", "who": "プリーストリー（シェーレも独立に発見）"}, "9": {"en": "Fluorine", "origin": "ラテン語 fluere（流れる）。蛍石が金属精錬の融剤だったことから", "cls": "ハロゲン（非金属・典型元素）", "state": "気体（淡黄色）", "mass": "19.00", "config": "K2 L7", "val": "7", "ion": "F⁻", "flame": "—", "occ": "単体は天然に存在しない。蛍石 CaF₂ などの鉱物として存在", "use": "歯みがき粉（フッ化物）、フライパンのフッ素樹脂コーティング", "comp": "HF（フッ化水素：ガラスを溶かす）、CaF₂（蛍石）、NaF", "tip": "電気陰性度が最大で、最も反応しやすい非金属。語呂「船」（F・Ne）", "year": "1886", "who": "モアッサン"}, "10": {"en": "Neon", "origin": "ギリシャ語 neos（新しい）", "cls": "貴ガス（非金属・典型元素）", "state": "気体", "mass": "20.18", "config": "K2 L8", "val": "0", "ion": "—", "flame": "—", "occ": "空気中にごく微量（約0.002%）", "use": "ネオンサイン（赤橙色に光る）", "comp": "化合物を作らない", "tip": "語呂「船」（F・Ne）", "year": "1898", "who": "ラムゼー、トラバース"}, "11": {"en": "Sodium", "origin": "記号はラテン語 natrium（ソーダ灰 natron）から。英語名は soda から", "cls": "アルカリ金属（典型元素・金属）", "state": "固体", "mass": "22.99", "config": "K2 L8 M1", "val": "1", "ion": "Na⁺", "flame": "黄", "occ": "単体は天然に存在しない。海水中の Na⁺ や岩塩（NaCl）として存在", "use": "食塩、トンネル照明のナトリウムランプ、重曹（ベーキングパウダー）", "comp": "NaCl（食塩）、NaHCO₃（重曹）、Na₂CO₃（炭酸ナトリウム）、NaOH（水酸化ナトリウム）", "tip": "やわらかくナイフで切れる。水と激しく反応するため灯油中に保存。語呂「七曲がり」（Na・Mg・Al）", "year": "1807", "who": "デービー"}, "12": {"en": "Magnesium", "origin": "ギリシャのマグネシア地方", "cls": "アルカリ土類金属（典型元素・金属）", "state": "固体", "mass": "24.31", "config": "K2 L8 M2", "val": "2", "ion": "Mg²⁺", "flame": "—（示さない）", "occ": "単体は天然に存在しない。海水中（にがり）や鉱物（ドロマイト）として存在", "use": "豆腐の凝固剤（にがり）、軽量合金（ノートPC・カメラの筐体）、花火の白い光", "comp": "MgO（酸化マグネシウム）、MgCl₂（にがりの主成分）、Mg(OH)₂（胃腸薬）、MgSO₄", "tip": "植物の葉緑素の中心にある原子。空気中で燃やすと強い白い光。語呂「七曲がり」（Na・Mg・Al）", "year": "1808", "who": "デービー（単離）"}, "13": {"en": "Aluminium", "origin": "ラテン語 alumen（ミョウバン）", "cls": "典型元素・金属", "state": "固体", "mass": "26.98", "config": "K2 L8 M3", "val": "3", "ion": "Al³⁺", "flame": "—", "occ": "地殻で最も多い金属元素。ボーキサイト（酸化アルミニウムを含む鉱石）として存在", "use": "1円玉、アルミ缶、アルミホイル、窓のサッシ", "comp": "Al₂O₃（ルビー・サファイアの主成分）、AlK(SO₄)₂·12H₂O（ミョウバン）", "tip": "酸にも強塩基にも溶ける両性金属。再生は新たに作る場合の約3%のエネルギーで済む。語呂「七曲がり」（Na・Mg・Al）", "year": "1825", "who": "エルステッド"}, "14": {"en": "Silicon", "origin": "ラテン語 silex（火打ち石）", "cls": "典型元素・半金属", "state": "固体", "mass": "28.09", "config": "K2 L8 M4", "val": "4", "ion": "—", "flame": "—", "occ": "地殻で酸素に次いで2番目に多い元素。石英や岩石（ケイ酸塩）として存在", "use": "半導体（IC チップ・太陽電池）、ガラス、シリコーン樹脂", "comp": "SiO₂（石英・水晶・ガラスの主成分）、SiC（炭化ケイ素）", "tip": "「シリコン」はケイ素、「シリコーン」はケイ素を含む樹脂で別物。語呂「シップス」（Si・P・S）", "year": "1824", "who": "ベルセリウス"}, "15": {"en": "Phosphorus", "origin": "ギリシャ語 phosphoros（光を運ぶもの）。暗所で光ることから", "cls": "非金属（典型元素）", "state": "固体", "mass": "30.97", "config": "K2 L8 M5", "val": "5", "ion": "—", "flame": "—", "occ": "リン鉱石（リン酸カルシウム）として存在。骨・歯・DNA に含まれる", "use": "マッチ箱の側薬（赤リン）、肥料（三要素の一つ）", "comp": "P₄O₁₀（十酸化四リン：乾燥剤）、H₃PO₄（リン酸）、Ca₃(PO₄)₂", "tip": "黄リン（空気中で自然発火・水中に保存）と赤リンは同素体。語呂「シップス」（Si・P・S）", "year": "1669", "who": "ブラント（尿から）"}, "16": {"en": "Sulfur", "origin": "ラテン語 sulphur", "cls": "非金属（典型元素）", "state": "固体（黄色）", "mass": "32.07", "config": "K2 L8 M6", "val": "6", "ion": "S²⁻", "flame": "—", "occ": "火山の噴気孔の周りに単体として存在。温泉水、石油中にも含まれる", "use": "タイヤのゴムに加える（加硫）、硫酸の原料、マッチの頭薬", "comp": "H₂SO₄（硫酸）、SO₂（二酸化硫黄）、H₂S（硫化水素：腐卵臭）、CaSO₄（石こう）", "tip": "温泉の「硫黄のにおい」は硫化水素のにおい。語呂「シップス」（Si・P・S）", "year": "古代", "who": "—"}, "17": {"en": "Chlorine", "origin": "ギリシャ語 chloros（黄緑色）", "cls": "ハロゲン（非金属・典型元素）", "state": "気体（黄緑色）", "mass": "35.45", "config": "K2 L8 M7", "val": "7", "ion": "Cl⁻", "flame": "—", "occ": "単体は天然に存在しない。海水中の Cl⁻ や岩塩として存在", "use": "水道水・プールの消毒、塩素系漂白剤、塩化ビニル樹脂（水道管）", "comp": "NaCl（食塩）、HCl（塩酸・胃酸の成分）、NaClO（次亜塩素酸ナトリウム：漂白剤）", "tip": "「まぜるな危険」は酸性洗剤と混ぜると塩素が発生するため。語呂「クラーク」（Cl・Ar・K）", "year": "1774", "who": "シェーレ"}, "18": {"en": "Argon", "origin": "ギリシャ語 argos（怠け者）。反応しないことから", "cls": "貴ガス（非金属・典型元素）", "state": "気体", "mass": "39.95", "config": "K2 L8 M8", "val": "0", "ion": "—", "flame": "—", "occ": "空気の約0.9%。窒素・酸素に次いで3番目に多い成分", "use": "白熱電球・蛍光灯の封入ガス、溶接の保護ガス", "comp": "化合物をほとんど作らない", "tip": "語呂「クラーク」（Cl・Ar・K）", "year": "1894", "who": "レイリー、ラムゼー"}, "19": {"en": "Potassium", "origin": "記号はドイツ語 Kalium（アラビア語 qali＝草木灰）から。英語名は potash（草木灰）から", "cls": "アルカリ金属（典型元素・金属）", "state": "固体", "mass": "39.10", "config": "K2 L8 M8 N1", "val": "1", "ion": "K⁺", "flame": "赤紫", "occ": "単体は天然に存在しない。岩石（長石）、海水、植物の灰（草木灰）に含まれる", "use": "肥料（三要素の一つ）、バナナや野菜に多く含まれる栄養素", "comp": "KCl（塩化カリウム）、KOH（水酸化カリウム）、KNO₃（硝酸カリウム：黒色火薬）、KMnO₄", "tip": "単体は水と激しく反応するため灯油中に保存。語呂「クラーク」（Cl・Ar・K）", "year": "1807", "who": "デービー"}, "20": {"en": "Calcium", "origin": "ラテン語 calx（石灰）", "cls": "アルカリ土類金属（典型元素・金属）", "state": "固体", "mass": "40.08", "config": "K2 L8 M8 N2", "val": "2", "ion": "Ca²⁺", "flame": "橙赤", "occ": "単体は天然に存在しない。石灰石・大理石・貝殻・骨や歯に含まれる", "use": "セメント、チョーク、お菓子の乾燥剤（生石灰）、融雪剤", "comp": "CaCO₃（炭酸カルシウム）、CaO（生石灰）、Ca(OH)₂（消石灰）、CaCl₂（塩化カルシウム）、CaSO₄（石こう）", "tip": "人体で最も多い金属元素。語呂の最後「か」（Ca）", "year": "1808", "who": "デービー"}, "21": {"en": "Scandium", "origin": "スカンジナビア地方", "cls": "遷移元素・金属（希土類）", "state": "固体", "mass": "44.96", "config": "K2 L8 M9 N2", "val": "最外殻2（遷移元素）", "ion": "Sc³⁺", "flame": "—", "occ": "鉱石中にごく微量に存在する希少な元素", "use": "スタジアムの照明（メタルハライドランプ）、自転車フレーム・金属バットのアルミ合金", "comp": "Sc₂O₃（酸化スカンジウム）", "tip": "メンデレーエフが「エカホウ素」として存在を予言した", "year": "1879", "who": "ニルソン"}, "22": {"en": "Titanium", "origin": "ギリシャ神話の巨人族ティタン", "cls": "遷移元素・金属", "state": "固体", "mass": "47.87", "config": "K2 L8 M10 N2", "val": "最外殻2（遷移元素）", "ion": "Ti⁴⁺", "flame": "—", "occ": "イルメナイト・ルチルなどの酸化物の鉱石として存在", "use": "メガネのフレーム、人工関節、ゴルフクラブ、白色顔料・日焼け止め、光触媒", "comp": "TiO₂（酸化チタン(IV)：白色顔料・光触媒）", "tip": "軽くて強く、さびにくい。光触媒は日本で生まれた技術", "year": "1791", "who": "グレゴール（1795年にクラプロートが命名）"}, "23": {"en": "Vanadium", "origin": "北欧神話の美の女神バナジス（フレイヤ）。化合物の色が美しいことから", "cls": "遷移元素・金属", "state": "固体", "mass": "50.94", "config": "K2 L8 M11 N2", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "鉱石や原油にわずかに含まれる", "use": "工具（スパナなど）の高強度鋼、大型蓄電池（レドックスフロー電池）", "comp": "V₂O₅（酸化バナジウム(V)：硫酸製造の触媒）", "tip": "ホヤの血液にはバナジウムが濃縮されている", "year": "1830", "who": "セフストレーム（1801年にデル・リオも発見）"}, "24": {"en": "Chromium", "origin": "ギリシャ語 chroma（色）。化合物の色がさまざまなことから", "cls": "遷移元素・金属", "state": "固体", "mass": "52.00", "config": "K2 L8 M13 N1", "val": "最外殻1（遷移元素）", "ion": "Cr³⁺", "flame": "—", "occ": "クロム鉄鉱として存在", "use": "ステンレス鋼（鉄・クロム・ニッケルの合金）、クロムめっき", "comp": "K₂Cr₂O₇（二クロム酸カリウム：赤橙色）、K₂CrO₄（クロム酸カリウム：黄色）、Cr₂O₃（緑色顔料）", "tip": "ルビーの赤色やエメラルドの緑色はクロムによる", "year": "1797", "who": "ボークラン"}, "25": {"en": "Manganese", "origin": "ギリシャのマグネシア地方の鉱物 magnes から", "cls": "遷移元素・金属", "state": "固体", "mass": "54.94", "config": "K2 L8 M13 N2", "val": "最外殻2（遷移元素）", "ion": "Mn²⁺", "flame": "—", "occ": "マンガン鉱（MnO₂）として存在。深海底のマンガン団塊にも含まれる", "use": "乾電池・アルカリ乾電池の正極、鉄鋼の添加物", "comp": "MnO₂（酸化マンガン(IV)：過酸化水素の分解の触媒）、KMnO₄（過マンガン酸カリウム：赤紫色）", "tip": "中学の酸素発生実験で使う黒い粉が MnO₂", "year": "1774", "who": "ガーン"}, "26": {"en": "Iron", "origin": "記号はラテン語 ferrum から", "cls": "遷移元素・金属", "state": "固体", "mass": "55.85", "config": "K2 L8 M14 N2", "val": "最外殻2（遷移元素）", "ion": "Fe²⁺、Fe³⁺", "flame": "—", "occ": "鉄鉱石（赤鉄鉱 Fe₂O₃・磁鉄鉱 Fe₃O₄）として存在。地殻で4番目に多い元素", "use": "鋼（建物・自動車・橋）、使い捨てカイロ（鉄がさびるときの発熱）、血液のヘモグロビン", "comp": "Fe₂O₃（赤さび）、Fe₃O₄（黒さび・砂鉄）、FeSO₄、FeCl₃", "tip": "地球全体（核を含む）では質量で最も多い元素", "year": "古代", "who": "—"}, "27": {"en": "Cobalt", "origin": "ドイツ語 Kobold（鉱山の小鬼）。精錬を邪魔する鉱石とされたことから", "cls": "遷移元素・金属", "state": "固体", "mass": "58.93", "config": "K2 L8 M15 N2", "val": "最外殻2（遷移元素）", "ion": "Co²⁺", "flame": "—", "occ": "ニッケルや銅の鉱石とともに存在", "use": "リチウムイオン電池の正極、青色顔料（コバルトブルー）、強力な磁石", "comp": "LiCoO₂（コバルト酸リチウム）、CoCl₂（塩化コバルト(II)：シリカゲルの吸湿の目印）", "tip": "塩化コバルト紙は水を吸うと青色から赤色に変わる。ビタミンB12の中心原子", "year": "1735", "who": "ブラント"}, "28": {"en": "Nickel", "origin": "ドイツ語 Kupfernickel（悪魔の銅）。銅鉱石と間違えられたことから", "cls": "遷移元素・金属", "state": "固体", "mass": "58.69", "config": "K2 L8 M16 N2", "val": "最外殻2（遷移元素）", "ion": "Ni²⁺", "flame": "—", "occ": "鉱石として存在。隕石の鉄にも含まれる", "use": "50円玉・100円玉（白銅：銅とニッケル）、ステンレス鋼、ニッケル水素電池、めっき", "comp": "NiSO₄（硫酸ニッケル(II)）、NiO", "tip": "金属アレルギーの原因になりやすい", "year": "1751", "who": "クロンステット"}, "29": {"en": "Copper", "origin": "記号はラテン語 cuprum（キプロス島）から", "cls": "遷移元素・金属", "state": "固体（赤色）", "mass": "63.55", "config": "K2 L8 M18 N1", "val": "最外殻1（遷移元素）", "ion": "Cu²⁺（Cu⁺）", "flame": "青緑", "occ": "黄銅鉱 CuFeS₂ などの鉱石として存在。まれに自然銅として産出", "use": "電線、10円玉（青銅）、5円玉（黄銅：銅と亜鉛）、鍋", "comp": "CuSO₄·5H₂O（硫酸銅(II)五水和物：青色）、CuO（酸化銅(II)：黒色）、緑青", "tip": "電気の伝導性は銀に次いで2番目。人類が最初に使った金属の一つ", "year": "古代", "who": "—"}, "30": {"en": "Zinc", "origin": "ドイツ語 Zink（とがったもの）。結晶の形から", "cls": "遷移元素・金属（12族は典型元素とする教科書もある）", "state": "固体", "mass": "65.38", "config": "K2 L8 M18 N2", "val": "2", "ion": "Zn²⁺", "flame": "—", "occ": "閃亜鉛鉱 ZnS として存在", "use": "トタン（鋼板に亜鉛めっき）、乾電池の負極、黄銅（5円玉）", "comp": "ZnO（酸化亜鉛：白色顔料・日焼け止め）、ZnS、ZnSO₄", "tip": "酸にも強塩基にも溶ける両性金属", "year": "1746", "who": "マルクグラーフ（ヨーロッパでの単離）"}, "31": {"en": "Gallium", "origin": "ラテン語 Gallia（フランス）", "cls": "典型元素・金属", "state": "固体（融点約30℃）", "mass": "69.72", "config": "K2 L8 M18 N3", "val": "3", "ion": "Ga³⁺", "flame": "—", "occ": "ボーキサイトや亜鉛鉱石にごく微量に含まれる", "use": "青色LED（窒化ガリウム）、半導体（ヒ化ガリウム）", "comp": "GaN（窒化ガリウム）、GaAs（ヒ化ガリウム）", "tip": "手のひらの上で溶ける金属。メンデレーエフが「エカアルミニウム」として予言", "year": "1875", "who": "ボアボードラン"}, "32": {"en": "Germanium", "origin": "ラテン語 Germania（ドイツ）", "cls": "典型元素・半金属", "state": "固体", "mass": "72.63", "config": "K2 L8 M18 N4", "val": "4", "ion": "—", "flame": "—", "occ": "亜鉛鉱石などにごく微量に含まれる", "use": "赤外線カメラのレンズ、光ファイバーの添加物、初期のトランジスタ", "comp": "GeO₂（酸化ゲルマニウム）", "tip": "メンデレーエフが「エカケイ素」として予言", "year": "1886", "who": "ヴィンクラー"}, "33": {"en": "Arsenic", "origin": "ギリシャ語 arsenikon（黄色の顔料・雄黄）", "cls": "典型元素・半金属", "state": "固体", "mass": "74.92", "config": "K2 L8 M18 N5", "val": "5", "ion": "—", "flame": "—", "occ": "硫化物の鉱石として存在。地下水に溶け出していることもある", "use": "半導体（ヒ化ガリウム：スマートフォンの高周波部品）", "comp": "As₂O₃（三酸化二ヒ素：猛毒）、GaAs", "tip": "化合物は毒性が強い。ひじきなどの海藻にも微量に含まれる", "year": "1250頃", "who": "アルベルトゥス・マグヌス"}, "34": {"en": "Selenium", "origin": "ギリシャ語 selene（月）。先に見つかったテルル（地球）にちなむ", "cls": "非金属（典型元素）", "state": "固体", "mass": "78.97", "config": "K2 L8 M18 N6", "val": "6", "ion": "Se²⁻", "flame": "—", "occ": "硫化銅の鉱石などにごく微量に含まれる", "use": "ガラスの着色・消色、かつてのコピー機の感光体", "comp": "H₂Se（セレン化水素）、SeO₂", "tip": "人体に必要な微量元素だが、とりすぎると有害", "year": "1817", "who": "ベルセリウス"}, "35": {"en": "Bromine", "origin": "ギリシャ語 bromos（悪臭）", "cls": "ハロゲン（非金属・典型元素）", "state": "液体（赤褐色）", "mass": "79.90", "config": "K2 L8 M18 N7", "val": "7", "ion": "Br⁻", "flame": "—", "occ": "単体は天然に存在しない。海水中に Br⁻ として存在", "use": "写真フィルムの感光剤（臭化銀）、プラスチックの難燃剤", "comp": "AgBr（臭化銀）、KBr（臭化カリウム）、HBr", "tip": "常温で液体の元素は臭素と水銀の2つだけ", "year": "1826", "who": "バラール"}, "36": {"en": "Krypton", "origin": "ギリシャ語 kryptos（隠れた）", "cls": "貴ガス（非金属・典型元素）", "state": "気体", "mass": "83.80", "config": "K2 L8 M18 N8", "val": "0", "ion": "—", "flame": "—", "occ": "空気中にごく微量に存在", "use": "クリプトン電球（長寿命の電球）、カメラのフラッシュ", "comp": "化合物をほとんど作らない（KrF₂ などわずか）", "tip": "かつて1メートルの定義に使われた（クリプトンの光の波長）", "year": "1898", "who": "ラムゼー、トラバース"}, "38": {"en": "Strontium", "origin": "スコットランドのストロンチアン村", "cls": "アルカリ土類金属（典型元素・金属）", "state": "固体", "mass": "87.62", "config": "K2 L8 M18 N8 O2", "val": "2", "ion": "Sr²⁺", "flame": "紅（深赤）", "occ": "単体は天然に存在しない。天青石（SrSO₄）などの鉱物として存在", "use": "花火の赤色、暗い所で光る蓄光塗料（非常口の表示など）", "comp": "SrCO₃（炭酸ストロンチウム）、SrSO₄、SrCl₂", "tip": "花火の赤はストロンチウムの炎色反応", "year": "1790", "who": "クロフォード（1808年にデービーが単離）"}, "47": {"en": "Silver", "origin": "記号はラテン語 argentum から", "cls": "遷移元素・金属", "state": "固体", "mass": "107.9", "config": "K2 L8 M18 N18 O1", "val": "最外殻1（遷移元素）", "ion": "Ag⁺", "flame": "—", "occ": "自然銀として産出するほか、輝銀鉱（Ag₂S）などの鉱石として存在", "use": "食器・アクセサリー、抗菌剤（銀イオン）、写真フィルム、はんだ", "comp": "AgNO₃（硝酸銀）、AgCl（塩化銀：白色沈殿）、AgBr、Ag₂S（銀が黒ずむ原因）", "tip": "電気・熱の伝導性が全金属で最大", "year": "古代", "who": "—"}, "50": {"en": "Tin", "origin": "記号はラテン語 stannum から", "cls": "典型元素・金属", "state": "固体", "mass": "118.7", "config": "K2 L8 M18 N18 O4", "val": "4", "ion": "Sn²⁺、Sn⁴⁺", "flame": "—", "occ": "スズ石（SnO₂）として存在", "use": "はんだ（スズ・銀・銅）、ブリキ（鋼板にスズめっき：缶詰）、青銅（銅とスズ）", "comp": "SnO₂（酸化スズ(IV)）、SnCl₂（塩化スズ(II)：還元剤）", "tip": "青銅器時代を支えた金属", "year": "古代", "who": "—"}, "53": {"en": "Iodine", "origin": "ギリシャ語 iodes（紫色）。気体が紫色であることから", "cls": "ハロゲン（非金属・典型元素）", "state": "固体（黒紫色）", "mass": "126.9", "config": "K2 L8 M18 N18 O7", "val": "7", "ion": "I⁻", "flame": "—", "occ": "海水・海藻に含まれる。千葉県の地下水（かん水）から採取され、日本は世界有数の産出国", "use": "うがい薬・消毒薬、ヨウ素デンプン反応（デンプンの検出）", "comp": "KI（ヨウ化カリウム）、AgI（ヨウ化銀：人工降雨）、HI", "tip": "加熱すると固体から直接気体になる（昇華）。甲状腺ホルモンの材料", "year": "1811", "who": "クールトア"}, "56": {"en": "Barium", "origin": "ギリシャ語 barys（重い）", "cls": "アルカリ土類金属（典型元素・金属）", "state": "固体", "mass": "137.3", "config": "K2 L8 M18 N18 O8 P2", "val": "2", "ion": "Ba²⁺", "flame": "黄緑", "occ": "単体は天然に存在しない。重晶石（BaSO₄）として存在", "use": "胃のX線検査の造影剤（硫酸バリウム）、花火の緑色", "comp": "BaSO₄（硫酸バリウム：水に溶けない白色沈殿）、BaCl₂、Ba(OH)₂", "tip": "健康診断の「バリウムを飲む」は BaSO₄ のこと", "year": "1808", "who": "デービー（単離。1774年にシェーレが存在を確認）"}, "78": {"en": "Platinum", "origin": "スペイン語 platina（小さな銀）", "cls": "遷移元素・金属", "state": "固体", "mass": "195.1", "config": "K2 L8 M18 N32 O17 P1", "val": "最外殻1（遷移元素）", "ion": "—", "flame": "—", "occ": "自然白金（砂白金）として産出", "use": "アクセサリー（プラチナ）、自動車の排ガス浄化触媒、燃料電池の電極", "comp": "H₂PtCl₆（ヘキサクロリド白金(IV)酸）", "tip": "王水（濃塩酸と濃硝酸の混合物）にしか溶けない", "year": "1748", "who": "ウジョア（記載）"}, "79": {"en": "Gold", "origin": "記号はラテン語 aurum から", "cls": "遷移元素・金属", "state": "固体（金色）", "mass": "197.0", "config": "K2 L8 M18 N32 O18 P1", "val": "最外殻1（遷移元素）", "ion": "—（イオンになりにくい）", "flame": "—", "occ": "自然金として産出（金鉱石・砂金）", "use": "装飾品、電子部品の接点・金めっき、金箔", "comp": "HAuCl₄（テトラクロリド金(III)酸：金を王水に溶かしてできる）", "tip": "展性・延性が全金属で最大。1gで約0.5m²の金箔になる。王水にしか溶けない", "year": "古代", "who": "—"}, "80": {"en": "Mercury", "origin": "記号はラテン語 hydrargyrum（水の銀）から。英語名は水星 Mercury", "cls": "遷移元素・金属（12族は典型元素とする教科書もある）", "state": "液体", "mass": "200.6", "config": "K2 L8 M18 N32 O18 P2", "val": "2", "ion": "Hg²⁺", "flame": "—", "occ": "辰砂（HgS）として存在", "use": "蛍光灯（水銀蒸気）、かつての体温計・気圧計", "comp": "HgS（硫化水銀(II)：朱色の顔料）、HgCl₂", "tip": "常温で液体の唯一の金属。水俣病の原因物質は有機水銀。水銀の使用を減らす水俣条約がある", "year": "古代", "who": "—"}, "82": {"en": "Lead", "origin": "記号はラテン語 plumbum から", "cls": "典型元素・金属", "state": "固体", "mass": "207.2", "config": "K2 L8 M18 N32 O18 P4", "val": "4", "ion": "Pb²⁺", "flame": "—", "occ": "方鉛鉱（PbS）として存在", "use": "自動車のバッテリー（鉛蓄電池）、X線室の放射線遮へい、釣りのおもり", "comp": "PbO₂（酸化鉛(IV)）、PbSO₄、PbS、PbCrO₄（クロム酸鉛(II)：黄色）", "tip": "有毒なため、はんだや水道管で鉛を使わない製品への切り替えが進んだ", "year": "古代", "who": "—"}, "92": {"en": "Uranium", "origin": "天王星 Uranus（直前に発見された惑星）", "cls": "遷移元素・金属（アクチノイド・放射性元素）", "state": "固体", "mass": "238.0", "config": "K2 L8 M18 N32 O21 P9 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "閃ウラン鉱（ピッチブレンド）などの鉱石として存在", "use": "原子力発電の燃料（ウラン235）、ウランガラス（紫外線で緑色に光る）", "comp": "UO₂（二酸化ウラン：核燃料）、UF₆（六フッ化ウラン）", "tip": "天然に多く存在する元素の中で最も原子番号が大きい", "year": "1789", "who": "クラプロート"}, "37": {"en": "Rubidium", "origin": "ラテン語 rubidus（深紅）。スペクトルに赤い線が見えたことから", "cls": "アルカリ金属（典型元素・金属）", "state": "固体（融点約39℃）", "mass": "85.47", "config": "K2 L8 M18 N8 O1", "val": "1", "ion": "Rb⁺", "flame": "—", "occ": "単体は天然に存在しない。リチア雲母などの鉱物にわずかに含まれる", "use": "ルビジウム原子時計（携帯電話の基地局・GPS）、岩石の年代測定", "comp": "RbCl（塩化ルビジウム）、RbOH", "tip": "分光器（光のスペクトル）を使って発見された元素の一つ", "year": "1861", "who": "ブンゼン、キルヒホッフ"}, "39": {"en": "Yttrium", "origin": "スウェーデンのイッテルビー村", "cls": "遷移元素・金属（希土類）", "state": "固体", "mass": "88.91", "config": "K2 L8 M18 N9 O2", "val": "最外殻2（遷移元素）", "ion": "Y³⁺", "flame": "—", "occ": "希土類（レアアース）の鉱石に含まれる", "use": "LED・蛍光灯の蛍光体、YAGレーザー、高温超伝導体", "comp": "Y₂O₃（酸化イットリウム）、YBa₂Cu₃O₇（高温超伝導体）", "tip": "イッテルビー村の名前からは Y・Yb・Tb・Er の4元素が名付けられた", "year": "1794", "who": "ガドリン"}, "40": {"en": "Zirconium", "origin": "鉱物ジルコン（ペルシャ語 zargun＝金色）", "cls": "遷移元素・金属", "state": "固体", "mass": "91.22", "config": "K2 L8 M18 N10 O2", "val": "最外殻2（遷移元素）", "ion": "Zr⁴⁺", "flame": "—", "occ": "ジルコン（ZrSiO₄）などの鉱物として存在", "use": "セラミック包丁（ジルコニア）、原子炉の燃料を包む管、人工宝石（キュービックジルコニア）", "comp": "ZrO₂（ジルコニア）、ZrSiO₄（ジルコン）", "tip": "中性子をほとんど吸収しないので原子炉の材料に向いている", "year": "1789", "who": "クラプロート"}, "41": {"en": "Niobium", "origin": "ギリシャ神話のニオベ（タンタロスの娘）。性質の似たタンタルにちなむ", "cls": "遷移元素・金属", "state": "固体", "mass": "92.91", "config": "K2 L8 M18 N12 O1", "val": "最外殻1（遷移元素）", "ion": "—", "flame": "—", "occ": "パイロクロアなどの鉱石として存在", "use": "MRI・リニアモーターカーの超伝導磁石（ニオブチタン合金）、高強度の鉄鋼", "comp": "Nb₂O₅（酸化ニオブ）、NbTi（ニオブチタン合金）", "tip": "タンタルと性質がよく似ていて、名前も親子関係にしてある", "year": "1801", "who": "ハチェット"}, "42": {"en": "Molybdenum", "origin": "ギリシャ語 molybdos（鉛）。鉛の鉱石と間違えられたことから", "cls": "遷移元素・金属", "state": "固体", "mass": "95.95", "config": "K2 L8 M18 N13 O1", "val": "最外殻1（遷移元素）", "ion": "—", "flame": "—", "occ": "輝水鉛鉱（MoS₂）として存在", "use": "工具やステンレスの添加物、潤滑剤（二硫化モリブデン）", "comp": "MoS₂（二硫化モリブデン）、MoO₃", "tip": "人体に必要な微量元素（酵素の成分）", "year": "1778", "who": "シェーレ（1781年にイェルムが単離）"}, "43": {"en": "Technetium", "origin": "ギリシャ語 technetos（人工の）", "cls": "遷移元素・金属（放射性元素）", "state": "固体", "mass": "[99]", "config": "K2 L8 M18 N13 O2", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然にはほとんど存在しない（ウラン鉱石中にごく微量）", "use": "病院の画像診断（骨シンチグラフィなどの放射性医薬品）", "comp": "TcO₄⁻（過テクネチウム酸イオン）", "tip": "人工的に作られた最初の元素。周期表で長く空欄だった", "year": "1937", "who": "セグレ、ペリエ"}, "44": {"en": "Ruthenium", "origin": "ラテン語 Ruthenia（ロシア）", "cls": "遷移元素・金属（白金族）", "state": "固体", "mass": "101.1", "config": "K2 L8 M18 N15 O1", "val": "最外殻1（遷移元素）", "ion": "—", "flame": "—", "occ": "白金の鉱石に少量含まれる", "use": "ハードディスクの記録層、電子部品、化学工業の触媒", "comp": "RuO₂（酸化ルテニウム(IV)）、RuO₄", "tip": "野依良治（2001年ノーベル化学賞）の研究でルテニウムの触媒が使われた", "year": "1844", "who": "クラウス"}, "45": {"en": "Rhodium", "origin": "ギリシャ語 rhodon（バラ）。塩がバラ色になることから", "cls": "遷移元素・金属（白金族）", "state": "固体", "mass": "102.9", "config": "K2 L8 M18 N16 O1", "val": "最外殻1（遷移元素）", "ion": "—", "flame": "—", "occ": "白金の鉱石に少量含まれる", "use": "自動車の排ガス浄化触媒、アクセサリーのめっき", "comp": "RhCl₃（塩化ロジウム(III)）", "tip": "貴金属の中でも特に高価", "year": "1803", "who": "ウォラストン"}, "46": {"en": "Palladium", "origin": "小惑星パラス（直前に発見された）", "cls": "遷移元素・金属（白金族）", "state": "固体", "mass": "106.4", "config": "K2 L8 M18 N18", "val": "—（遷移元素・例外的な電子配置）", "ion": "Pd²⁺", "flame": "—", "occ": "白金やニッケルの鉱石に含まれる", "use": "自動車の排ガス浄化触媒、歯の詰め物（金銀パラジウム合金）、水素の精製", "comp": "PdCl₂（塩化パラジウム(II)）", "tip": "自分の体積の約900倍の水素を吸収する。鈴木章・根岸英一（2010年ノーベル化学賞）のクロスカップリングはパラジウム触媒", "year": "1803", "who": "ウォラストン"}, "48": {"en": "Cadmium", "origin": "ギリシャ語 kadmeia（亜鉛の鉱石・菱亜鉛鉱）", "cls": "遷移元素・金属（12族は典型元素とする教科書もある）", "state": "固体", "mass": "112.4", "config": "K2 L8 M18 N18 O2", "val": "最外殻2（遷移元素）", "ion": "Cd²⁺", "flame": "—", "occ": "亜鉛の鉱石に含まれる", "use": "ニッケル・カドミウム電池、黄色の絵の具（カドミウムイエロー）、太陽電池", "comp": "CdS（硫化カドミウム：黄色）、CdTe（テルル化カドミウム）", "tip": "四大公害病の一つ、イタイイタイ病の原因物質", "year": "1817", "who": "シュトロマイヤー"}, "49": {"en": "Indium", "origin": "スペクトルに藍色（indigo）の線が見えたことから", "cls": "典型元素・金属", "state": "固体", "mass": "114.8", "config": "K2 L8 M18 N18 O3", "val": "3", "ion": "In³⁺", "flame": "—", "occ": "亜鉛の鉱石にわずかに含まれる", "use": "液晶ディスプレイ・タッチパネルの透明電極（ITO）", "comp": "In₂O₃（酸化インジウム）、ITO（酸化インジウムスズ）", "tip": "とてもやわらかく、爪で傷がつく", "year": "1863", "who": "ライヒ、リヒター"}, "51": {"en": "Antimony", "origin": "記号はラテン語 stibium から", "cls": "典型元素・半金属", "state": "固体", "mass": "121.8", "config": "K2 L8 M18 N18 O5", "val": "5", "ion": "—", "flame": "—", "occ": "輝安鉱（Sb₂S₃）として存在", "use": "プラスチックやカーテンの難燃剤、鉛蓄電池の電極の合金", "comp": "Sb₂O₃（三酸化二アンチモン）、Sb₂S₃", "tip": "古代エジプトでは輝安鉱の粉をアイシャドウに使った", "year": "古代", "who": "—"}, "52": {"en": "Tellurium", "origin": "ラテン語 tellus（地球）", "cls": "典型元素・半金属", "state": "固体", "mass": "127.6", "config": "K2 L8 M18 N18 O6", "val": "6", "ion": "—", "flame": "—", "occ": "金や銅の鉱石に含まれる", "use": "太陽電池（テルル化カドミウム）、書き換え型DVD・ブルーレイの記録層", "comp": "CdTe（テルル化カドミウム）、TeO₂", "tip": "あとで見つかったセレン（月）と対になる名前", "year": "1782", "who": "ミュラー"}, "54": {"en": "Xenon", "origin": "ギリシャ語 xenos（見慣れないもの）", "cls": "貴ガス（非金属・典型元素）", "state": "気体", "mass": "131.3", "config": "K2 L8 M18 N18 O8", "val": "0", "ion": "—", "flame": "—", "occ": "空気中にごく微量に存在", "use": "自動車のヘッドライト（キセノンランプ）、カメラのストロボ、小惑星探査機「はやぶさ」のイオンエンジン", "comp": "XeF₂、XeF₄（フッ化キセノン）", "tip": "貴ガスでも化合物を作ることを示した元素", "year": "1898", "who": "ラムゼー、トラバース"}, "55": {"en": "Caesium", "origin": "ラテン語 caesius（青灰色）。スペクトルに青い線が見えたことから", "cls": "アルカリ金属（典型元素・金属）", "state": "固体（融点約28℃）", "mass": "132.9", "config": "K2 L8 M18 N18 O8 P1", "val": "1", "ion": "Cs⁺", "flame": "—", "occ": "単体は天然に存在しない。ポルックス石などの鉱物に含まれる", "use": "セシウム原子時計（1秒の定義に使われる）", "comp": "CsCl（塩化セシウム）、CsOH", "tip": "1秒の長さはセシウム原子が出す電磁波で決められている。原発事故で問題になった放射性セシウムは同位体", "year": "1860", "who": "ブンゼン、キルヒホッフ"}, "57": {"en": "Lanthanum", "origin": "ギリシャ語 lanthanein（隠れる）。鉱物の中に隠れていたことから", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "138.9", "config": "K2 L8 M18 N18 O9 P2", "val": "—（ランタノイド）", "ion": "La³⁺", "flame": "—", "occ": "モナズ石などの希土類（レアアース）の鉱石に含まれる", "use": "カメラの高性能レンズ、ニッケル水素電池の電極（水素吸蔵合金）", "comp": "La₂O₃（酸化ランタン）", "tip": "ランタノイド（57〜71番）の名前の元になった元素", "year": "1839", "who": "モサンデル"}, "58": {"en": "Cerium", "origin": "小惑星ケレス（Ceres）", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "140.1", "config": "K2 L8 M18 N19 O9 P2", "val": "—（ランタノイド）", "ion": "Ce³⁺、Ce⁴⁺", "flame": "—", "occ": "モナズ石などの希土類の鉱石に含まれる。希土類の中で最も多い", "use": "ガラスの研磨剤（酸化セリウム）、ライターの発火石、排ガス浄化触媒", "comp": "CeO₂（酸化セリウム(IV)）", "tip": "ライターの火花は、セリウムを含む合金をこすって出している", "year": "1803", "who": "ベルセリウス、ヒシンガー（クラプロートも同時期に発見）"}, "59": {"en": "Praseodymium", "origin": "ギリシャ語 prasios（緑の）＋didymos（双子）", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "140.9", "config": "K2 L8 M18 N21 O8 P2", "val": "—（ランタノイド）", "ion": "Pr³⁺", "flame": "—", "occ": "モナズ石などの希土類の鉱石に含まれる", "use": "強力な磁石の添加物、ガラスや陶磁器の黄緑色の着色", "comp": "Pr₆O₁₁（酸化プラセオジム）", "tip": "ネオジムと「双子」として一緒に分離された", "year": "1885", "who": "ウェルスバッハ"}, "60": {"en": "Neodymium", "origin": "ギリシャ語 neos（新しい）＋didymos（双子）", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "144.2", "config": "K2 L8 M18 N22 O8 P2", "val": "—（ランタノイド）", "ion": "Nd³⁺", "flame": "—", "occ": "モナズ石などの希土類の鉱石に含まれる", "use": "ネオジム磁石（ハイブリッド車・電気自動車のモーター、スマートフォンのスピーカー、イヤホン）", "comp": "Nd₂Fe₁₄B（ネオジム磁石の主成分）、Nd₂O₃", "tip": "最強の永久磁石であるネオジム磁石は、1982年に佐川眞人（日本）が発明", "year": "1885", "who": "ウェルスバッハ"}, "61": {"en": "Promethium", "origin": "ギリシャ神話のプロメテウス（天から火を盗んで人間に与えた）", "cls": "ランタノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[145]", "config": "K2 L8 M18 N23 O8 P2", "val": "—（ランタノイド）", "ion": "Pm³⁺", "flame": "—", "occ": "天然にはほとんど存在しない（ウラン鉱石中にごく微量）", "use": "原子力電池（宇宙機器）、かつての夜光塗料", "comp": "Pm₂O₃（酸化プロメチウム）", "tip": "ランタノイドで唯一、安定な同位体がない", "year": "1945", "who": "マリンスキー、グレンデニン、コリエル"}, "62": {"en": "Samarium", "origin": "鉱物サマルスキー石（ロシアの鉱山技師サマルスキーにちなむ）", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "150.4", "config": "K2 L8 M18 N24 O8 P2", "val": "—（ランタノイド）", "ion": "Sm³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "サマリウムコバルト磁石（高温に強い磁石：モーター・センサー）", "comp": "Sm₂O₃（酸化サマリウム）、SmCo₅", "tip": "人名に（鉱物を通して）由来する最初の元素", "year": "1879", "who": "ボアボードラン"}, "63": {"en": "Europium", "origin": "ヨーロッパ（Europe）", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "152.0", "config": "K2 L8 M18 N25 O8 P2", "val": "—（ランタノイド）", "ion": "Eu²⁺、Eu³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "ユーロ紙幣の偽造防止インク（紫外線で光る）、蛍光灯やLEDの赤・青の蛍光体", "comp": "Eu₂O₃（酸化ユウロピウム）", "tip": "ヨーロッパの通貨ユーロの紙幣にも使われている", "year": "1901", "who": "ドマルセー"}, "64": {"en": "Gadolinium", "origin": "フィンランドの化学者ガドリン（希土類研究の先駆者）", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "157.3", "config": "K2 L8 M18 N25 O9 P2", "val": "—（ランタノイド）", "ion": "Gd³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "MRI検査の造影剤", "comp": "Gd₂O₃（酸化ガドリニウム）", "tip": "常温付近（約20℃）で磁石につく性質がなくなる", "year": "1880", "who": "マリニャック"}, "65": {"en": "Terbium", "origin": "スウェーデンのイッテルビー村", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "158.9", "config": "K2 L8 M18 N27 O8 P2", "val": "—（ランタノイド）", "ion": "Tb³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "蛍光灯やディスプレイの緑色の蛍光体、磁石の性能向上", "comp": "Tb₄O₇（酸化テルビウム）", "tip": "イッテルビー村から名付けられた4元素の一つ", "year": "1843", "who": "モサンデル"}, "66": {"en": "Dysprosium", "origin": "ギリシャ語 dysprositos（近づきにくい）。分離がとても難しかったことから", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "162.5", "config": "K2 L8 M18 N28 O8 P2", "val": "—（ランタノイド）", "ion": "Dy³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "ネオジム磁石を熱に強くする添加物（電気自動車のモーター）、蓄光材", "comp": "Dy₂O₃（酸化ジスプロシウム）", "tip": "電気自動車の普及で需要が増えているレアアース", "year": "1886", "who": "ボアボードラン"}, "67": {"en": "Holmium", "origin": "ストックホルムのラテン名 Holmia", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "164.9", "config": "K2 L8 M18 N29 O8 P2", "val": "—（ランタノイド）", "ion": "Ho³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "医療用レーザー（尿路結石の破砕など）", "comp": "Ho₂O₃（酸化ホルミウム）", "tip": "全元素の中で最も強い磁気モーメントをもつ", "year": "1878", "who": "クレーベ（ソレー、ドラフォンテーヌも）"}, "68": {"en": "Erbium", "origin": "スウェーデンのイッテルビー村", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "167.3", "config": "K2 L8 M18 N30 O8 P2", "val": "—（ランタノイド）", "ion": "Er³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "光ファイバー通信の信号増幅器、ガラスのピンク色の着色", "comp": "Er₂O₃（酸化エルビウム）", "tip": "インターネットの長距離光通信を支える元素", "year": "1843", "who": "モサンデル"}, "69": {"en": "Thulium", "origin": "北欧の古い呼び名 Thule（最北の地）", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "168.9", "config": "K2 L8 M18 N31 O8 P2", "val": "—（ランタノイド）", "ion": "Tm³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "医療用レーザー、携帯型のX線装置", "comp": "Tm₂O₃（酸化ツリウム）", "tip": "希土類の中でも特に少ない", "year": "1879", "who": "クレーベ"}, "70": {"en": "Ytterbium", "origin": "スウェーデンのイッテルビー村", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "173.0", "config": "K2 L8 M18 N32 O8 P2", "val": "—（ランタノイド）", "ion": "Yb³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "工業用のファイバーレーザー、超精密な原子時計（光格子時計）の研究", "comp": "Yb₂O₃（酸化イッテルビウム）", "tip": "イッテルビー村から名付けられた4元素の一つ", "year": "1878", "who": "マリニャック"}, "71": {"en": "Lutetium", "origin": "パリのラテン名 Lutetia", "cls": "ランタノイド（遷移元素・金属・希土類）", "state": "固体", "mass": "175.0", "config": "K2 L8 M18 N32 O9 P2", "val": "—（ランタノイド）", "ion": "Lu³⁺", "flame": "—", "occ": "希土類の鉱石に含まれる", "use": "PET検査の検出器の結晶、がん治療の放射性医薬品", "comp": "Lu₂O₃（酸化ルテチウム）", "tip": "ランタノイドの最後の元素", "year": "1907", "who": "ユルバン（ウェルスバッハも同時期に発見）"}, "72": {"en": "Hafnium", "origin": "コペンハーゲンのラテン名 Hafnia", "cls": "遷移元素・金属", "state": "固体", "mass": "178.5", "config": "K2 L8 M18 N32 O10 P2", "val": "最外殻2（遷移元素）", "ion": "Hf⁴⁺", "flame": "—", "occ": "ジルコニウムの鉱石に含まれる", "use": "原子炉の制御棒、スマートフォンのCPU（半導体）の絶縁膜", "comp": "HfO₂（酸化ハフニウム）", "tip": "ジルコニウムと性質がそっくりで、分離がとても難しい", "year": "1923", "who": "コスター、ヘヴェシー"}, "73": {"en": "Tantalum", "origin": "ギリシャ神話のタンタロス。酸に浸しても溶けないことを「水を飲めない罰」に例えた", "cls": "遷移元素・金属", "state": "固体", "mass": "180.9", "config": "K2 L8 M18 N32 O11 P2", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "タンタル石などの鉱石として存在", "use": "スマートフォン・パソコンの小型コンデンサー、人工骨・インプラント", "comp": "Ta₂O₅（酸化タンタル）", "tip": "酸に非常に強く、体にもなじみやすい", "year": "1802", "who": "エーケベリ"}, "74": {"en": "Tungsten", "origin": "スウェーデン語 tung sten（重い石）。記号 W はドイツ語 Wolfram から", "cls": "遷移元素・金属", "state": "固体", "mass": "183.8", "config": "K2 L8 M18 N32 O12 P2", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "灰重石・鉄マンガン重石などの鉱石として存在", "use": "白熱電球のフィラメント、超硬工具（ドリル・切削工具）", "comp": "WC（炭化タングステン：超硬合金）、WO₃", "tip": "金属の中で融点が最も高い（約3400℃）", "year": "1783", "who": "エルヤル兄弟"}, "75": {"en": "Rhenium", "origin": "ライン川（ラテン語 Rhenus）", "cls": "遷移元素・金属", "state": "固体", "mass": "186.2", "config": "K2 L8 M18 N32 O13 P2", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "モリブデンの鉱石にごく微量に含まれる", "use": "ジェットエンジンのタービン翼の耐熱合金、ガソリン製造の触媒", "comp": "Re₂O₇（酸化レニウム(VII)）", "tip": "小川正孝（日本）が1908年に発表した「ニッポニウム」は、実はレニウムだったと考えられている", "year": "1925", "who": "ノダック、タッケ、ベルク"}, "76": {"en": "Osmium", "origin": "ギリシャ語 osme（におい）。酸化物が強いにおいをもつことから", "cls": "遷移元素・金属（白金族）", "state": "固体", "mass": "190.2", "config": "K2 L8 M18 N32 O14 P2", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "白金の鉱石に少量含まれる", "use": "万年筆のペン先（イリジウムとの合金）", "comp": "OsO₄（四酸化オスミウム：猛毒、電子顕微鏡の染色剤）", "tip": "全元素の中で密度が最も大きい（約22.6 g/cm³）", "year": "1803", "who": "テナント"}, "77": {"en": "Iridium", "origin": "ギリシャ神話の虹の女神イリス。塩の色がさまざまなことから", "cls": "遷移元素・金属（白金族）", "state": "固体", "mass": "192.2", "config": "K2 L8 M18 N32 O15 P2", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "白金の鉱石に少量含まれる", "use": "自動車の点火プラグ、万年筆のペン先、かつてのメートル原器（白金イリジウム合金）", "comp": "IrO₂（酸化イリジウム(IV)）", "tip": "恐竜が絶滅したころの地層にイリジウムが多く、隕石衝突説の証拠になった", "year": "1803", "who": "テナント"}, "81": {"en": "Thallium", "origin": "ギリシャ語 thallos（若葉の緑）。スペクトルに緑の線が見えたことから", "cls": "典型元素・金属", "state": "固体", "mass": "204.4", "config": "K2 L8 M18 N32 O18 P3", "val": "3", "ion": "Tl⁺", "flame": "—", "occ": "硫化物の鉱物にわずかに含まれる", "use": "心臓の検査薬（放射性のタリウム201）、特殊な光学ガラス", "comp": "Tl₂SO₄（硫酸タリウム：猛毒）", "tip": "化合物は猛毒", "year": "1861", "who": "クルックス"}, "83": {"en": "Bismuth", "origin": "ドイツ語 Wismut（白い塊）", "cls": "典型元素・金属", "state": "固体", "mass": "209.0", "config": "K2 L8 M18 N32 O18 P5", "val": "5", "ion": "Bi³⁺", "flame": "—", "occ": "輝蒼鉛鉱として、また鉛や銅の鉱石に含まれる", "use": "鉛を使わないはんだ、胃腸薬、スプリンクラーの低融点合金", "comp": "Bi₂O₃（酸化ビスマス）、BiCl₃", "tip": "人工的に作った結晶は虹色の階段状になる", "year": "1753", "who": "ジョフロワ（鉛・スズと区別）"}, "84": {"en": "Polonium", "origin": "マリー・キュリーの祖国ポーランド", "cls": "典型元素・金属（放射性元素）", "state": "固体", "mass": "[210]", "config": "K2 L8 M18 N32 O18 P6", "val": "6", "ion": "—", "flame": "—", "occ": "ウラン鉱石中にごく微量に含まれる", "use": "かつての静電気除去装置", "comp": "PoO₂（酸化ポロニウム）", "tip": "キュリー夫妻がラジウムより少し先に発見した", "year": "1898", "who": "キュリー夫妻"}, "85": {"en": "Astatine", "origin": "ギリシャ語 astatos（不安定な）", "cls": "ハロゲン（典型元素・放射性元素）", "state": "固体（推定）", "mass": "[210]", "config": "K2 L8 M18 N32 O18 P7", "val": "7", "ion": "—", "flame": "—", "occ": "天然にはごくわずか（地殻全体でも1g未満と推定される）", "use": "がん治療の研究（アスタチン211。日本でも研究が進む）", "comp": "研究段階（HAt など）", "tip": "天然に存在する元素の中で最も少ない", "year": "1940", "who": "コーソン、マッケンジー、セグレ"}, "86": {"en": "Radon", "origin": "ラジウム（radium）が壊れてできる気体であることから", "cls": "貴ガス（非金属・典型元素・放射性元素）", "state": "気体", "mass": "[222]", "config": "K2 L8 M18 N32 O18 P8", "val": "0", "ion": "—", "flame": "—", "occ": "岩石中のラジウムが壊れて生じる。温泉水や地下の空気に含まれる", "use": "ラドン温泉（鳥取県の三朝温泉など）、地震予知の研究", "comp": "RnF₂ など（ごくわずか）", "tip": "最も重い気体の元素（天然）", "year": "1900", "who": "ドルン"}, "87": {"en": "Francium", "origin": "フランス", "cls": "アルカリ金属（典型元素・放射性元素）", "state": "固体（推定）", "mass": "[223]", "config": "K2 L8 M18 N32 O18 P8 Q1", "val": "1", "ion": "Fr⁺", "flame": "—", "occ": "ウラン鉱石中にごく微量に含まれる", "use": "研究用のみ", "comp": "研究段階", "tip": "天然で最後に発見された元素。寿命は約22分", "year": "1939", "who": "ペレー"}, "88": {"en": "Radium", "origin": "ラテン語 radius（光線）。放射線を出すことから", "cls": "アルカリ土類金属（典型元素・放射性元素）", "state": "固体", "mass": "[226]", "config": "K2 L8 M18 N32 O18 P8 Q2", "val": "2", "ion": "Ra²⁺", "flame": "—", "occ": "ウラン鉱石（ピッチブレンド）に含まれる", "use": "かつての夜光塗料・がん治療（現在はほとんど使わない）、ラジウム温泉", "comp": "RaCl₂（塩化ラジウム）、RaSO₄", "tip": "キュリー夫妻が数トンの鉱石からわずか0.1gを取り出した", "year": "1898", "who": "キュリー夫妻"}, "89": {"en": "Actinium", "origin": "ギリシャ語 aktis（光線）", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[227]", "config": "K2 L8 M18 N32 O18 P9 Q2", "val": "—（アクチノイド）", "ion": "Ac³⁺", "flame": "—", "occ": "ウラン鉱石中にごく微量に含まれる", "use": "がん治療の研究（アクチニウム225）", "comp": "Ac₂O₃（酸化アクチニウム）", "tip": "アクチノイド（89〜103番）の名前の元になった元素", "year": "1899", "who": "ドビエルヌ"}, "90": {"en": "Thorium", "origin": "北欧神話の雷神トール", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "232.0", "config": "K2 L8 M18 N32 O18 P10 Q2", "val": "—（アクチノイド）", "ion": "Th⁴⁺", "flame": "—", "occ": "モナズ石などの鉱石に含まれる", "use": "かつてのガスランタンの発光体（マントル）、次世代原子炉の燃料の研究", "comp": "ThO₂（酸化トリウム：融点が非常に高い）", "tip": "地球の内部を温める熱の一部はトリウムやウランの放射性崩壊による", "year": "1829", "who": "ベルセリウス"}, "91": {"en": "Protactinium", "origin": "protos（最初の）＋アクチニウム。壊れるとアクチニウムになることから", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "231.0", "config": "K2 L8 M18 N32 O20 P9 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "ウラン鉱石中にごく微量に含まれる", "use": "研究用のみ", "comp": "Pa₂O₅（酸化プロトアクチニウム）", "tip": "名前に「アクチニウムの親」という意味がある", "year": "1913", "who": "ファヤンス、ゲーリング（1918年にハーン、マイトナーも）"}, "93": {"en": "Neptunium", "origin": "海王星 Neptune（ウラン＝天王星の次の惑星）", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[237]", "config": "K2 L8 M18 N32 O22 P9 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然にはほとんど存在しない（ウラン鉱石中にごく微量）", "use": "研究用（中性子の検出器）", "comp": "NpO₂（酸化ネプツニウム）", "tip": "ウランより重い「超ウラン元素」として最初に作られた", "year": "1940", "who": "マクミラン、エーベルソン"}, "94": {"en": "Plutonium", "origin": "冥王星 Pluto（海王星の次の天体）", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[239]", "config": "K2 L8 M18 N32 O24 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然にはほとんど存在しない。原子炉の中でウランから生じる", "use": "原子力発電の燃料（MOX燃料）、惑星探査機の原子力電池（ボイジャー、火星探査車）", "comp": "PuO₂（酸化プルトニウム）", "tip": "惑星の名前がウラン・ネプツニウム・プルトニウムと続く", "year": "1940", "who": "シーボーグら"}, "95": {"en": "Americium", "origin": "アメリカ大陸（上のユウロピウム＝ヨーロッパにならった）", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[243]", "config": "K2 L8 M18 N32 O25 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。原子炉の中で作られる", "use": "煙感知器（海外の家庭用）", "comp": "AmO₂（酸化アメリシウム）", "tip": "周期表で真上のユウロピウムと名前が対応している", "year": "1944", "who": "シーボーグら"}, "96": {"en": "Curium", "origin": "キュリー夫妻（放射能研究の先駆者）", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[247]", "config": "K2 L8 M18 N32 O25 P9 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。原子炉や加速器で作られる", "use": "火星探査車の岩石分析装置", "comp": "Cm₂O₃（酸化キュリウム）", "tip": "真上のガドリニウム（化学者ガドリン）と同じく人名に由来", "year": "1944", "who": "シーボーグら"}, "97": {"en": "Berkelium", "origin": "カリフォルニア大学のあるバークレー市", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[247]", "config": "K2 L8 M18 N32 O27 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。原子炉で作られる", "use": "新しい元素を作るための材料（テネシンの合成）", "comp": "研究段階", "tip": "真上のテルビウム（イッテルビー村）と同じく地名に由来", "year": "1949", "who": "シーボーグら"}, "98": {"en": "Californium", "origin": "カリフォルニア州・カリフォルニア大学", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体", "mass": "[252]", "config": "K2 L8 M18 N32 O28 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。原子炉で作られる", "use": "中性子源（原子炉の起動、金属や地下資源の探査）", "comp": "研究段階", "tip": "ごく少量でも強い中性子を出す", "year": "1950", "who": "シーボーグら"}, "99": {"en": "Einsteinium", "origin": "物理学者アインシュタイン", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "固体（推定）", "mass": "[252]", "config": "K2 L8 M18 N32 O29 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。1952年の水爆実験の灰から見つかった", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "研究段階", "tip": "水爆実験の灰から発見されたため、しばらく秘密にされた", "year": "1952", "who": "ギオルソら"}, "100": {"en": "Fermium", "origin": "物理学者フェルミ（原子炉の開発）", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "不明（人工元素）", "mass": "[257]", "config": "K2 L8 M18 N32 O30 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。1952年の水爆実験の灰から見つかった", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "研究段階", "tip": "アインスタイニウムと一緒に発見された", "year": "1952", "who": "ギオルソら"}, "101": {"en": "Mendelevium", "origin": "周期表を考えた化学者メンデレーエフ", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "不明（人工元素）", "mass": "[258]", "config": "K2 L8 M18 N32 O31 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "周期表の生みの親の名前がついた元素", "year": "1955", "who": "ギオルソ、シーボーグら"}, "102": {"en": "Nobelium", "origin": "ノーベル賞を創設したノーベル", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "不明（人工元素）", "mass": "[259]", "config": "K2 L8 M18 N32 O32 P8 Q2", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "発見をめぐってアメリカ・ソ連・スウェーデンの研究所が争った", "year": "1966（確認）", "who": "ドゥブナ合同原子核研究所（ソ連）"}, "103": {"en": "Lawrencium", "origin": "サイクロトロンを発明した物理学者ローレンス", "cls": "アクチノイド（遷移元素・金属・放射性元素）", "state": "不明（人工元素）", "mass": "[262]", "config": "K2 L8 M18 N32 O32 P8 Q3", "val": "—（アクチノイド）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "2015年、日本原子力研究開発機構がこの元素のイオン化エネルギーを初めて測った", "year": "1961", "who": "ギオルソら"}, "104": {"en": "Rutherfordium", "origin": "原子核を発見した物理学者ラザフォード", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[267]", "config": "K2 L8 M18 N32 O32 P10 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "ここから先は「超重元素」と呼ばれる", "year": "1969", "who": "ギオルソら（1964年にドゥブナの研究所も報告）"}, "105": {"en": "Dubnium", "origin": "ロシアのドゥブナ（合同原子核研究所の所在地）", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[268]", "config": "K2 L8 M18 N32 O32 P11 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "元素名に研究所の地名が使われた例", "year": "1968〜1970", "who": "ドゥブナ合同原子核研究所、ローレンス・バークレー研究所"}, "106": {"en": "Seaborgium", "origin": "化学者シーボーグ（多くの超ウラン元素を発見）", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[271]", "config": "K2 L8 M18 N32 O32 P12 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "生きている人の名前がついた最初の元素", "year": "1974", "who": "ギオルソら"}, "107": {"en": "Bohrium", "origin": "原子模型を考えた物理学者ボーア", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[272]", "config": "K2 L8 M18 N32 O32 P13 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "ドイツの重イオン研究所（GSI）で作られた", "year": "1981", "who": "ミュンツェンベルクら（GSI）"}, "108": {"en": "Hassium", "origin": "ドイツのヘッセン州（ラテン名 Hassia）", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[277]", "config": "K2 L8 M18 N32 O32 P14 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "研究所（GSI）のある州の名前", "year": "1984", "who": "ミュンツェンベルクら（GSI）"}, "109": {"en": "Meitnerium", "origin": "核分裂の解明に貢献した物理学者マイトナー", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[276]", "config": "K2 L8 M18 N32 O32 P15 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "女性科学者だけの名前がついた、ただ一つの元素", "year": "1982", "who": "ミュンツェンベルクら（GSI）"}, "110": {"en": "Darmstadtium", "origin": "ドイツのダルムシュタット（研究所 GSI の所在地）", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[281]", "config": "K2 L8 M18 N32 O32 P16 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "研究所のある町の名前", "year": "1994", "who": "ホフマンら（GSI）"}, "111": {"en": "Roentgenium", "origin": "X線を発見した物理学者レントゲン", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[280]", "config": "K2 L8 M18 N32 O32 P17 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "11族（銅・銀・金の仲間）", "year": "1994", "who": "ホフマンら（GSI）"}, "112": {"en": "Copernicium", "origin": "地動説の天文学者コペルニクス", "cls": "遷移元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[285]", "config": "K2 L8 M18 N32 O32 P18 Q2（予測）", "val": "最外殻2（遷移元素）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "12族（亜鉛・水銀の仲間）", "year": "1996", "who": "ホフマンら（GSI）"}, "113": {"en": "Nihonium", "origin": "日本（にほん）", "cls": "典型元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[278]", "config": "K2 L8 M18 N32 O32 P18 Q3（予測）", "val": "3（予測）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "日本の理化学研究所が発見し、日本が名付けたアジア初の元素。亜鉛をビスマスにぶつけて作った", "year": "2004", "who": "理化学研究所（森田浩介ら）"}, "114": {"en": "Flerovium", "origin": "ロシアのフリョロフ原子核反応研究所（物理学者フリョロフ）", "cls": "典型元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[289]", "config": "K2 L8 M18 N32 O32 P18 Q4（予測）", "val": "4（予測）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "「安定の島」に近いと予想される元素", "year": "1999", "who": "ドゥブナ合同原子核研究所"}, "115": {"en": "Moscovium", "origin": "ロシアのモスクワ州", "cls": "典型元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[289]", "config": "K2 L8 M18 N32 O32 P18 Q5（予測）", "val": "5（予測）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "2016年にニホニウムなどと同時に名前が決まった", "year": "2004", "who": "ドゥブナ合同原子核研究所、ローレンス・リバモア国立研究所"}, "116": {"en": "Livermorium", "origin": "アメリカのローレンス・リバモア国立研究所", "cls": "典型元素（人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[293]", "config": "K2 L8 M18 N32 O32 P18 Q6（予測）", "val": "6（予測）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "16族（酸素の仲間）", "year": "2000", "who": "ドゥブナ合同原子核研究所、ローレンス・リバモア国立研究所"}, "117": {"en": "Tennessine", "origin": "アメリカのテネシー州（研究所や大学の所在地）", "cls": "ハロゲン（17族・人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[293]", "config": "K2 L8 M18 N32 O32 P18 Q7（予測）", "val": "7（予測）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "ハロゲンなので語尾は「-ine」（テネシン）になっている", "year": "2010", "who": "ドゥブナ合同原子核研究所、オークリッジ国立研究所など"}, "118": {"en": "Oganesson", "origin": "物理学者オガネシアン（超重元素の研究者）", "cls": "貴ガス（18族・人工元素・性質は予測）", "state": "不明（人工元素）", "mass": "[294]", "config": "K2 L8 M18 N32 O32 P18 Q8（予測）", "val": "0（予測）", "ion": "—", "flame": "—", "occ": "天然には存在しない。加速器で原子核どうしを衝突させ、数個の原子だけが作られた", "use": "研究用のみ（ごくわずかしか作れず、すぐに壊れる）", "comp": "知られていない（研究段階）", "tip": "現在知られている最も重い元素。周期表の第7周期がこれで埋まった", "year": "2002", "who": "ドゥブナ合同原子核研究所、ローレンス・リバモア国立研究所"}};
+if(!BASIC.length){document.addEventListener("DOMContentLoaded",()=>{document.querySelector("main").innerHTML='<p style="padding:24px;font-size:16px">このファイルはアプリのひな形（データなし）です。<br>「周期表アプリ」フォルダの <b>index.html</b> を開いてください。</p>';});}
+
+// ---------- 位置・分類の計算 ----------
+const SETS = {
+  alkali:[3,11,19,37,55,87], alkaline:[4,12,20,38,56,88], halogen:[9,17,35,53,85,117],
+  noble:[2,10,18,36,54,86,118], metalloid:[5,14,32,33,51,52], nonmetal:[1,6,7,8,15,16,34],
+  post:[13,31,49,50,81,82,83,84,113,114,115,116]
+};
+const CATS = {
+  alkali:{name:"アルカリ金属",h:4}, alkaline:{name:"アルカリ土類金属",h:30}, transition:{name:"遷移元素",h:212},
+  post:{name:"典型元素（金属）",h:168}, metalloid:{name:"半金属",h:95}, nonmetal:{name:"非金属",h:52},
+  halogen:{name:"ハロゲン",h:300}, noble:{name:"貴ガス",h:262}, lanthanoid:{name:"ランタノイド",h:188}, actinoid:{name:"アクチノイド",h:336}
+};
+const STATES = {solid:{name:"固体",h:30}, liquid:{name:"液体",h:198}, gas:{name:"気体",h:135}, unknown:{name:"不明",h:240}};
+const METALS = {metal:{name:"金属",h:212}, metalloid:{name:"半金属",h:95}, nonmetal:{name:"非金属",h:52}};
+const TYPES = {typical:{name:"典型元素",h:30}, transition:{name:"遷移元素",h:212}};
+const MASTERY = {none:{name:"未学習",h:220,s:"5%"}, weak:{name:"苦手（！）",h:4}, learning:{name:"練習中",h:48}, good:{name:"覚えた（✓）",h:140}};
+
+function place(z){
+  if(z===1) return {g:1,p:1};
+  if(z===2) return {g:18,p:1};
+  const ps=[[3,2],[11,3],[19,4],[37,5],[55,6],[87,7]];
+  let start=0,p=0; for(const [s,pp] of ps){ if(z>=s){start=s;p=pp;} }
+  const o=z-start;
+  if(p<=3) return {g: o<2 ? o+1 : o+11, p};
+  if(p<=5) return {g:o+1,p};
+  if(o<2) return {g:o+1,p};
+  if(o<=16) return {g:3,p,f:true,col:o+1};   // ランタノイド・アクチノイド（3族）
+  return {g:o-13,p};
+}
+function category(z){
+  for(const k in SETS) if(SETS[k].includes(z)) return k;
+  if(z>=57&&z<=71) return "lanthanoid";
+  if(z>=89&&z<=103) return "actinoid";
+  return "transition";
+}
+function stateOf(z){
+  if([1,2,7,8,9,10,17,18,36,54,86].includes(z)) return "gas";
+  if([35,80].includes(z)) return "liquid";
+  if(z>=100) return "unknown";
+  return "solid";
+}
+const EL = BASIC.map(([z,sym,name,en])=>{
+  const pl=place(z), cat=category(z);
+  const metal = ["metalloid"].includes(cat)?"metalloid":(["nonmetal","halogen","noble"].includes(cat)?"nonmetal":"metal");
+  const type = (pl.g<=2||pl.g>=13)&&!pl.f ? "typical" : "transition";
+  return {z,sym,name,en,...pl,cat,state:stateOf(z),metal,type,d:DETAIL[z]||null};
+});
+
+// 重要元素：1〜36番＋よく出る10元素（Sr・Ag・Sn・I・Ba・Pt・Au・Hg・Pb・U）
+const KEY46=z=>z<=36||[38,47,50,53,56,78,79,80,82,92].includes(z);
+// ---------- 設定（ブラウザに保存） ----------
+const store={get(k,d){try{return localStorage.getItem("pt."+k)||d}catch(e){return d}},
+             set(k,v){try{localStorage.setItem("pt."+k,v)}catch(e){}}};
+const S={level:store.get("level","high"), color:store.get("color","cat"), range:store.get("range","20"), focus:null, view:store.get("view","table")};
+
+// ---------- 学習記録 ----------
+// rec[z] = {c:正解数, w:不正解数, s:連続正解数, t:最終日時}
+let REC={}; try{REC=JSON.parse(localStorage.getItem("pt.rec")||"{}")||{}}catch(e){REC={}}
+function saveRec(){try{localStorage.setItem("pt.rec",JSON.stringify(REC))}catch(e){}}
+function record(z,ok){const r=REC[z]||{c:0,w:0,s:0,t:0}; if(ok){r.c++;r.s++}else{r.w++;r.s=0} r.t=Date.now(); REC[z]=r; saveRec();}
+function mstat(z){const r=REC[z]; if(!r) return "none"; if(r.s>=3) return "good"; if(r.s===0&&r.w>0) return "weak"; return "learning";}
+
+// ---------- 周期表の描画 ----------
+const table=document.getElementById("table");
+function build(){
+  const frag=document.createDocumentFragment();
+  const add=(el,col,row)=>{el.style.gridColumn=col;el.style.gridRow=row;frag.appendChild(el)};
+  for(let g=1;g<=18;g++){const d=document.createElement("div");d.className="ghead";d.textContent=g;add(d,g+1,1)}
+  for(let p=1;p<=7;p++){const d=document.createElement("div");d.className="phead";d.textContent=p;add(d,1,p+1)}
+  for(const e of EL){
+    const b=document.createElement("button");
+    b.className="cell"; b.dataset.z=e.z;
+    b.setAttribute("aria-label",`${e.z}番 ${e.sym} ${e.name}`);
+    b.innerHTML=`<span class="z">${e.z}</span><span class="sym">${e.sym}</span><span class="nm${e.name.length>5?" s":""}">${e.name}</span>`;
+    b.addEventListener("click",()=>openCard(e.z));
+    if(e.f) add(b, e.col+1, e.p===6?10:11); else add(b,e.g+1,e.p+1);
+  }
+  const ph=(txt,row,first)=>{const b=document.createElement("button");b.className="cell ph";b.dataset.ph=row;
+    b.innerHTML=txt;b.addEventListener("click",()=>openCard(first));add(b,4,row)};
+  ph("57〜71<br>ランタ<br>ノイド",7,57); ph("89〜103<br>アクチ<br>ノイド",8,89);
+  const gap=document.createElement("div");gap.className="gap";gap.style.gridRow=9;frag.appendChild(gap);
+  const lab=(t,row)=>{const d=document.createElement("div");d.className="phead";d.style.justifyContent="flex-end";d.style.fontSize="10.5px";d.style.whiteSpace="nowrap";d.textContent=t;d.style.gridColumn="2 / 4";d.style.gridRow=row;d.style.paddingRight="6px";frag.appendChild(d)};
+  lab("ランタノイド",10); lab("アクチノイド",11);
+  table.appendChild(frag);
+}
+function palette(){ return S.color==="state"?STATES:S.color==="metal"?METALS:S.color==="type"?TYPES:S.color==="mastery"?MASTERY:CATS }
+function keyOf(e){ return S.color==="state"?e.state:S.color==="metal"?e.metal:S.color==="type"?e.type:S.color==="mastery"?mstat(e.z):e.cat }
+function inRange(e){
+  if(S.range==="20") return e.z<=20;
+  if(S.range==="36") return e.z<=36;
+  if(S.range==="detail") return KEY46(e.z);
+  return true;
+}
+function paint(){
+  const pal=palette();
+  table.querySelectorAll(".cell").forEach(c=>{
+    if(c.dataset.ph){ const k=S.color==="state"?"solid":S.color==="metal"?"metal":S.color==="type"?"transition":S.color==="mastery"?"none":(c.dataset.ph==="7"?"lanthanoid":"actinoid");
+      if(pal[k].s) c.style.setProperty("--cellS",pal[k].s); else c.style.removeProperty("--cellS");
+      c.style.setProperty("--h",pal[k].h); c.classList.toggle("off",S.range==="20"||S.range==="36"||(S.focus&&S.focus!==k)); return; }
+    const e=EL[c.dataset.z-1], k=keyOf(e);
+    c.style.setProperty("--h",pal[k].h);
+    if(pal[k].s) c.style.setProperty("--cellS",pal[k].s); else c.style.removeProperty("--cellS");
+    if(S.color==="mastery") c.dataset.m=k; else delete c.dataset.m;
+    c.classList.toggle("off", !inRange(e) || (S.focus && S.focus!==k));
+  });
+  const lg=document.getElementById("legend"); lg.innerHTML="";
+  for(const k in pal){
+    const b=document.createElement("button"); b.style.setProperty("--h",pal[k].h); if(pal[k].s) b.style.setProperty("--cellS",pal[k].s);
+    b.setAttribute("aria-pressed",S.focus===k); b.innerHTML=`<i></i>${pal[k].name}`;
+    b.title="クリックでこの色の元素だけを強調"; b.onclick=()=>{S.focus=S.focus===k?null:k;paint()}; lg.appendChild(b);
+  }
+  const notes={cat:"凡例をクリックすると、その分類の元素だけを強調します。",
+    state:"常温（25℃）・常圧での状態。原子番号100以降は性質が分かっていないため「不明」としています。",
+    metal:"半金属は金属と非金属の中間の性質をもつ元素です。",
+    type:"12族（亜鉛・カドミウム・水銀など）は典型元素とする教科書もあります。",
+    mastery:"カードとクイズの結果から色分けします。3回続けて正解すると「覚えた（✓）」、最後に間違えると「苦手（！）」になります。"};
+  document.getElementById("legendNote").textContent=notes[S.color];
+  document.body.classList.toggle("high",S.level==="high");
+  document.body.classList.toggle("vtable",S.view==="table");
+  renderSummary();
+  for(const [id,key] of [["levelSeg","level"],["colorSeg","color"],["rangeSeg","range"]])
+    document.querySelectorAll(`#${id} button`).forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===S[key]));
+}
+for(const [id,key] of [["levelSeg","level"],["colorSeg","color"],["rangeSeg","range"]]){
+  document.getElementById(id).addEventListener("click",ev=>{
+    if(key==="level") setTimeout(refreshSetups,0);
+    const b=ev.target.closest("button"); if(!b) return;
+    S[key]=b.dataset.v; store.set(key,S[key]); if(key==="color") S.focus=null; paint();
+    if(dlg.open && cur) openCard(cur);
+  });
+}
+
+// ---------- 詳細カード ----------
+const dlg=document.getElementById("dlg"), card=document.getElementById("card"); let cur=null;
+const FLAME={"赤":"#e53935","黄":"#fdd835","赤紫":"#b04fc0","橙赤":"#f4511e","青緑":"#1fb5a0","紅（深赤）":"#c2185b","黄緑":"#9ccc65"};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function bohrSVG(e){
+  const shells=[...e.d.config.matchAll(/[A-Z](\d+)/g)].map(m=>+m[1]); const n=shells.length;
+  const R0=22, step=(80-R0)/Math.max(n,1);
+  let s=`<svg viewBox="-90 -90 180 180" role="img" aria-label="電子配置の図 ${esc(e.d.config)}">`;
+  s+=`<circle r="15" fill="hsl(${CATS[e.cat].h} 60% 55%)"/><text y="5" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">${esc(e.sym)}</text>`;
+  shells.forEach((cnt,i)=>{const r=R0+step*(i+1)-step/2+6;
+    s+=`<circle r="${r.toFixed(1)}" fill="none" stroke="currentColor" stroke-opacity=".28"/>`;
+    const dot=cnt>18?2:2.8;
+    for(let k=0;k<cnt;k++){const a=-Math.PI/2+2*Math.PI*k/cnt;
+      s+=`<circle cx="${(r*Math.cos(a)).toFixed(1)}" cy="${(r*Math.sin(a)).toFixed(1)}" r="${dot}" fill="var(--accent)"/>`;}
+  });
+  return s+"</svg>";
+}
+function openCard(z){
+  const e=EL[z-1]; cur=z; const d=e.d;
+  const h=CATS[e.cat].h, pos=e.f?`3族（${e.cat==="lanthanoid"?"ランタノイド":"アクチノイド"}）・第${e.p}周期`:`${e.g}族・第${e.p}周期`;
+  let html=`<div class="ctop"><div class="tile" style="--h:${h}"><span class="z">${e.z}</span><span class="sym">${esc(e.sym)}</span><span class="nm">${esc(e.name)}</span></div>
+    <div class="ctitle"><h2 id="cName">${esc(e.name)}</h2><div class="en">${esc(d?d.en:e.en)}</div>
+    <div class="chips"><span class="chip">原子番号 ${e.z}</span><span class="chip">${pos}</span>
+    <span class="chip">${esc(d?d.cls:CATS[e.cat].name)}</span><span class="chip">常温：${esc(d?d.state:STATES[e.state].name)}</span></div></div>
+    <button class="close" aria-label="閉じる" onclick="dlg.close()">×</button></div>`;
+  if(d){
+    const flame = d.flame && !d.flame.startsWith("—") ? `<span class="flame" style="background:${FLAME[d.flame]||"transparent"}"></span>${esc(d.flame)}` : esc(d.flame||"—");
+    html+=`<div class="sec"><h3>どこにある？（天然での存在状態）</h3><p>${esc(d.occ)}</p>
+      <h3>身近なところでの使われ方</h3><p>${esc(d.use)}</p>
+      <h3>主な化合物</h3><p>${esc(d.comp)}</p>
+      <h3>覚えるヒント</h3><p>${esc(d.tip)}</p></div>
+    <div class="sec grid2"><div><h3>名前・記号の由来</h3><p>${esc(d.origin)}</p></div>
+      <div><h3>発見</h3><p>${esc(d.year)}${d.who&&d.who!=="—"?"・"+esc(d.who):""}</p></div>
+      <div><h3>よくなるイオン</h3><p>${esc(d.ion)}</p></div>
+      <div class="hs"><h3>炎色反応<span class="badge">高校</span></h3><p>${flame}</p></div></div>
+    <div class="sec hs"><h3>原子の構造<span class="badge">高校</span></h3>
+      <div class="bohr">${bohrSVG(e)}<div><p><b>電子配置</b>　${esc(d.config)}</p><p><b>価電子数</b>　${esc(d.val)}</p><p><b>原子量</b>　${esc(d.mass)}</p></div></div></div>`;
+  } else {
+    html+=`<div class="empty">この元素の詳しい情報（存在状態・用途・化合物など）は準備中です。</div>`;
+  }
+  html+=`<div class="nav"><button id="prev" ${z<=1?"disabled":""}>← ${z>1?esc(EL[z-2].sym)+" "+esc(EL[z-2].name):""}</button>
+    <button id="next" ${z>=118?"disabled":""}>${z<118?esc(EL[z].sym)+" "+esc(EL[z].name):""} →</button></div>`;
+  card.innerHTML=html; card.scrollTop=0;
+  card.querySelector("#prev").onclick=()=>z>1&&openCard(z-1);
+  card.querySelector("#next").onclick=()=>z<118&&openCard(z+1);
+  if(!dlg.open) dlg.showModal();
+}
+dlg.addEventListener("click",ev=>{ if(ev.target===dlg) dlg.close(); });
+dlg.addEventListener("close",()=>{ paint(); const c=table.querySelector(`[data-z="${cur}"]`); if(c) c.focus(); });
+document.addEventListener("keydown",ev=>{
+  if(!dlg.open){ studyKeys(ev); return; }
+  if(!cur) return;
+  if(ev.key==="ArrowRight"&&cur<118) openCard(cur+1);
+  if(ev.key==="ArrowLeft"&&cur>1) openCard(cur-1);
+});
+let tx=null,ty=null;
+card.addEventListener("touchstart",ev=>{tx=ev.touches[0].clientX;ty=ev.touches[0].clientY},{passive:true});
+card.addEventListener("touchend",ev=>{ if(tx===null) return;
+  const dx=ev.changedTouches[0].clientX-tx, dy=ev.changedTouches[0].clientY-ty; tx=null;
+  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){ if(dx<0&&cur<118) openCard(cur+1); if(dx>0&&cur>1) openCard(cur-1); }
+},{passive:true});
+
+
+// ---------- 記録の集計（周期表画面） ----------
+let resetArmed=false;
+function renderSummary(){
+  const el=document.getElementById("summary"); if(!el) return;
+  const list=EL.filter(inRange), cnt={none:0,weak:0,learning:0,good:0};
+  list.forEach(e=>cnt[mstat(e.z)]++);
+  const lab={"20":"1〜20番","36":"1〜36番","detail":"重要46元素","all":"すべて"}[S.range];
+  el.innerHTML=`学習記録（${lab}・${list.length}元素）：<b>覚えた ${cnt.good}</b> ・練習中 ${cnt.learning} ・苦手 ${cnt.weak} ・未学習 ${cnt.none}
+    <button class="link" id="resetRec">${resetArmed?"本当に記録を消しますか？（もう一度押すと消去）":"記録を消す"}</button>`;
+  document.getElementById("resetRec").onclick=()=>{ if(resetArmed){REC={};saveRec();resetArmed=false;} else {resetArmed=true; setTimeout(()=>{resetArmed=false;renderSummary()},5000);} paint(); };
+}
+
+// ---------- 画面の切り替え ----------
+const VIEWS=["table","flash","quiz"];
+function showView(v){
+  S.view=v; store.set("view",v);
+  VIEWS.forEach(x=>document.getElementById("v-"+x).hidden = x!==v);
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v));
+  if(v!=="table") refreshSetups();
+  paint();
+}
+document.getElementById("tabs").addEventListener("click",ev=>{const b=ev.target.closest("button"); if(b) showView(b.dataset.v);});
+
+// ---------- 出題範囲 ----------
+const RANGES=[
+  ["番号",[["n10","1〜10番",e=>e.z<=10],["n20","1〜20番",e=>e.z<=20],["n21-36","21〜36番",e=>e.z>=21&&e.z<=36],["n36","1〜36番",e=>e.z<=36],
+           ["detail","1〜36番＋重要元素（Ag・Au・Pb など）",e=>KEY46(e.z)],["all","すべての元素",()=>true]]],
+  ["族",[...[1,2,13,14,15,16,17,18].map(g=>["g"+g,`${g}族`,e=>e.g===g&&!e.f]),["gt","遷移元素（3〜12族）",e=>e.g>=3&&e.g<=12]]],
+  ["周期",[1,2,3,4,5,6,7].map(p=>["p"+p,`第${p}周期`,e=>e.p===p])],
+  ["学習記録",[["weak","苦手な元素（最後に間違えた）",e=>mstat(e.z)==="weak"],["notgood","まだ「覚えた」になっていない元素（1〜36番）",e=>e.z<=36&&mstat(e.z)!=="good"]]]
+];
+const RANGE_FN={}; RANGES.forEach(([,items])=>items.forEach(([k,,f])=>RANGE_FN[k]=f));
+function fillRange(sel,key,def){
+  const cur=store.get(key,def); sel.innerHTML="";
+  for(const [g,items] of RANGES){ const og=document.createElement("optgroup"); og.label=g;
+    for(const [k,lab,f] of items){ const o=document.createElement("option"); o.value=k; o.textContent=`${lab}（${EL.filter(f).length}）`; og.appendChild(o);} sel.appendChild(og); }
+  sel.value=cur; if(!sel.value) sel.value=def;
+}
+const shuffle=a=>{a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;};
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const posText=e=>e.f?`3族（${e.cat==="lanthanoid"?"ランタノイド":"アクチノイド"}）・第${e.p}周期`:`${e.g}族・第${e.p}周期`;
+const firstUse=e=>e.d&&e.d.use?e.d.use.split("、").slice(0,2).join("、"):"";
+function segSet(id,val){document.querySelectorAll(`#${id} button`).forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===val));}
+function segBind(id,key,def,cb){segSet(id,store.get(key,def)); document.getElementById(id).addEventListener("click",ev=>{const b=ev.target.closest("button"); if(!b) return; store.set(key,b.dataset.v); segSet(id,b.dataset.v); cb&&cb();});}
+
+// ---------- フラッシュカード ----------
+const fx={queue:[],total:0,done:0,again:0,flipped:false};
+const flashRange=document.getElementById("flashRange");
+flashRange.addEventListener("change",()=>{store.set("flashRange",flashRange.value);flashInfo();});
+segBind("flashDir","flashDir","sym");
+function flashInfo(){const n=EL.filter(RANGE_FN[flashRange.value]).length;
+  document.getElementById("flashInfo").textContent=n?`${n}枚のカードで練習します。`:"この範囲には元素がありません（記録がまだないなど）。";
+  document.getElementById("flashStart").disabled=!n;}
+function flashStart(list){
+  const dir=store.get("flashDir","sym");
+  const pool=list||EL.filter(RANGE_FN[flashRange.value]);
+  fx.queue=shuffle(pool).map(e=>({e,dir:dir==="mix"?pick(["sym","name","num"]):dir}));
+  fx.total=fx.queue.length; fx.done=0; fx.again=0; fx.flipped=false; fx.list=pool;
+  document.getElementById("flashSetup").hidden=true; document.getElementById("flashDone").hidden=true; document.getElementById("flashSession").hidden=false;
+  flashRender();
+}
+function flashRender(){
+  const it=fx.queue[0], e=it.e, c=document.getElementById("fcard");
+  c.style.setProperty("--h",CATS[e.cat].h);
+  if(!fx.flipped){
+    c.innerHTML = it.dir==="sym"?`<span class="q">${esc(e.sym)}</span><span class="sub">この元素の名称は？（タップで答え）</span>`
+      : it.dir==="name"?`<span class="q txt">${esc(e.name)}</span><span class="sub">元素記号は？（タップで答え）</span>`
+      : `<span class="sub" style="margin:0 0 6px">原子番号</span><span class="q">${e.z}</span><span class="sub">この番号の元素は？（タップで答え）</span>`;
+  } else {
+    c.innerHTML=`<span class="a">${esc(e.sym)}　${esc(e.name)}<small>原子番号 ${e.z}・${posText(e)}</small></span>${firstUse(e)?`<span class="use">${esc(firstUse(e))}</span>`:""}`;
+  }
+  document.getElementById("fAgain").disabled=!fx.flipped; document.getElementById("fGot").disabled=!fx.flipped;
+  document.getElementById("flashLeft").textContent=`残り ${fx.queue.length} 枚（覚えた ${fx.done} / ${fx.total}）`;
+  document.getElementById("flashBar").style.width=(100*fx.done/fx.total)+"%";
+}
+function flashFlip(){fx.flipped=!fx.flipped; flashRender();}
+function flashAnswer(ok){
+  if(!fx.flipped) return;
+  const it=fx.queue.shift(); record(it.e.z,ok);
+  if(ok) fx.done++; else { fx.again++; fx.queue.splice(Math.min(fx.queue.length, 3+Math.floor(Math.random()*3)),0,it); }
+  fx.flipped=false;
+  if(!fx.queue.length) return flashFinish();
+  flashRender();
+}
+function flashFinish(){
+  document.getElementById("flashSession").hidden=true; const d=document.getElementById("flashDone"); d.hidden=false;
+  d.innerHTML=`<h2>おつかれさまでした</h2><p class="score">${fx.total}枚</p><p>すべて「覚えた」になりました。「まだ」を押した回数：${fx.again}回</p>
+    <div class="donebtns"><button class="primary" id="fdAgain">もう一度</button><button class="ghost" id="fdQuiz">クイズで確かめる</button><button class="ghost" id="fdBack">設定に戻る</button></div>`;
+  document.getElementById("fdAgain").onclick=()=>flashStart(fx.list);
+  document.getElementById("fdBack").onclick=flashBack;
+  document.getElementById("fdQuiz").onclick=()=>{store.set("quizRange",flashRange.value); flashBack(); showView("quiz");};
+}
+function flashBack(){["flashSession","flashDone"].forEach(id=>document.getElementById(id).hidden=true); document.getElementById("flashSetup").hidden=false; refreshSetups();}
+document.getElementById("flashStart").onclick=()=>flashStart();
+document.getElementById("fcard").onclick=flashFlip;
+document.getElementById("fAgain").onclick=()=>flashAnswer(false);
+document.getElementById("fGot").onclick=()=>flashAnswer(true);
+document.getElementById("flashQuit").onclick=flashBack;
+
+// ---------- 4択クイズ ----------
+const mask=(t,e)=>{ // 元素名と、それを含む言い方（フッ化・塩化・ケイ酸など）を伏せる
+  let w=[e.name]; if(e.name.endsWith("素")) w.push(e.name.slice(0,-1)+"化"); if(e.name==="硫黄") w.push("硫化"); if(e.name==="ケイ素") w.push("ケイ酸");
+  let out=String(t); for(const x of w) out=out.split(x).join("〇〇"); return out; };
+const QT={
+  sym2name:{label:"記号 → 名称", ok:()=>true, opt:e=>e.name,
+    q:e=>`<span class="big">${esc(e.sym)}</span><span class="hintline">この元素の名称は？</span>`},
+  name2sym:{label:"名称 → 記号", ok:()=>true, opt:e=>e.sym,
+    q:e=>`<span class="big" style="font-size:40px">${esc(e.name)}</span><span class="hintline">元素記号は？</span>`},
+  num2el:{label:"原子番号 → 元素", ok:()=>true, opt:e=>`${e.sym}（${e.name}）`,
+    q:e=>`<span class="hintline">原子番号</span><span class="big">${e.z}</span><span class="hintline">この番号の元素は？</span>`},
+  el2num:{label:"元素 → 原子番号", ok:()=>true, opt:e=>`${e.z}番`, near:6,
+    q:e=>`<span class="big">${esc(e.sym)}</span><span class="hintline">${esc(e.name)} の原子番号は？</span>`},
+  pos2el:{label:"族・周期 → 元素", ok:e=>!e.f, opt:e=>`${e.sym}（${e.name}）`,
+    q:e=>`<span class="big" style="font-size:34px">第${e.p}周期・${e.g}族</span><span class="hintline">周期表のこの位置にある元素は？</span>`},
+  use2el:{label:"身近な使われ方 → 元素", ok:e=>!!(e.d&&e.d.use&&!e.d.use.includes(e.sym)&&!e.d.use.startsWith("研究用")), opt:e=>`${e.sym}（${e.name}）`,
+    q:e=>`「${esc(mask(e.d.use,e))}」<span class="hintline">このように使われている元素は？</span>`},
+  occ2el:{label:"天然での存在 → 元素", ok:e=>!!(e.d&&e.d.occ&&!e.d.occ.includes(e.sym)&&!/^天然には(存在しない|ほとんど)/.test(e.d.occ)), opt:e=>`${e.sym}（${e.name}）`,
+    q:e=>`「${esc(mask(e.d.occ,e))}」<span class="hintline">天然でこのように存在している元素は？</span>`},
+  flame2el:{label:"炎色反応 → 元素", high:true, ok:e=>!!(e.d&&FLAME[e.d.flame]), opt:e=>`${e.sym}（${e.name}）`,
+    q:e=>`<span class="big" style="font-size:34px"><span class="flame" style="width:28px;height:28px;background:${FLAME[e.d.flame]}"></span>${esc(e.d.flame)}</span><span class="hintline">炎色反応がこの色になる元素は？</span>`}
+};
+const qx={list:[],i:0,ok:0,miss:[],answered:false};
+const quizRange=document.getElementById("quizRange"), quizType=document.getElementById("quizType");
+quizRange.addEventListener("change",()=>{store.set("quizRange",quizRange.value);quizInfo();});
+quizType.addEventListener("change",()=>{store.set("quizType",quizType.value);quizInfo();});
+segBind("quizCount","quizCount","10",quizInfo);
+function allowedTypes(){return Object.keys(QT).filter(k=>!QT[k].high||S.level==="high");}
+function fillTypes(){
+  const cur=store.get("quizType","mix"); quizType.innerHTML=`<option value="mix">おまかせ（いろいろな形式）</option>`+allowedTypes().map(k=>`<option value="${k}">${QT[k].label}</option>`).join("");
+  quizType.value=cur; if(!quizType.value) quizType.value="mix";
+}
+function typeOkFor(e,t){ return t==="mix" ? allowedTypes().some(k=>QT[k].ok(e)) : QT[t].ok(e); }
+function quizPool(){ const t=quizType.value; return EL.filter(RANGE_FN[quizRange.value]).filter(e=>typeOkFor(e,t)); }
+function quizInfo(){ const n=quizPool().length, c=store.get("quizCount","10"), q=c==="all"?n:+c;
+  document.getElementById("quizInfo").textContent = n ? `対象の元素：${n}個 → ${q}問を出題します。`
+    : "この範囲・形式で出せる問題がありません。範囲を広げるか、形式を「おまかせ」にしてください。";
+  document.getElementById("quizStart").disabled=!n; }
+function makeQ(e,t){
+  if(t==="mix") t=pick(allowedTypes().filter(k=>QT[k].ok(e)));
+  const T=QT[t], label=T.opt(e);
+  let cand=EL.filter(x=>x!==e && T.ok(x) && T.opt(x)!==label);
+  const inR=new Set(EL.filter(RANGE_FN[quizRange.value]).map(x=>x.z));
+  // 近い番号・同じ範囲の元素を選びやすくして、まぎらわしい選択肢にする
+  cand=cand.map(x=>({x,k:Math.abs(x.z-e.z)*(inR.has(x.z)?0.6:1.4)+Math.random()*(T.near||10)})).sort((a,b)=>a.k-b.k).map(o=>o.x);
+  const ds=[]; for(const x of cand){ if(ds.length>=3) break; if(!ds.some(y=>T.opt(y)===T.opt(x))) ds.push(x); }
+  return {e,t,text:T.q(e),opts:shuffle([e,...ds]).map(x=>({z:x.z,label:T.opt(x)}))};
+}
+function quizStart(list){
+  const pool=list||quizPool(), c=store.get("quizCount","10"), n=list?list.length:(c==="all"?pool.length:+c);
+  let seq=[]; while(seq.length<n){ let s=shuffle(pool); if(seq.length&&s[0]===seq[seq.length-1]&&s.length>1) s.push(s.shift()); seq=seq.concat(s); }
+  qx.list=seq.slice(0,n).map(e=>makeQ(e,quizType.value)); qx.i=0; qx.ok=0; qx.miss=[]; qx.pool=pool;
+  document.getElementById("quizSetup").hidden=true; document.getElementById("quizDone").hidden=true; document.getElementById("quizSession").hidden=false;
+  quizRender();
+}
+function quizRender(){
+  const Q=qx.list[qx.i]; qx.answered=false;
+  document.getElementById("quizNo").textContent=`第${qx.i+1}問 / ${qx.list.length}`;
+  document.getElementById("quizScore").textContent=`正解 ${qx.ok}`;
+  document.getElementById("quizBar").style.width=(100*qx.i/qx.list.length)+"%";
+  document.getElementById("qtext").innerHTML=Q.text;
+  const ch=document.getElementById("choices"); ch.innerHTML="";
+  Q.opts.forEach((o,i)=>{const b=document.createElement("button"); b.textContent=o.label; b.dataset.z=o.z; b.setAttribute("aria-label",`${i+1}：${o.label}`); b.onclick=()=>quizAnswer(o.z); ch.appendChild(b);});
+  document.getElementById("feedback").hidden=true;
+}
+function quizAnswer(z){
+  if(qx.answered) return; qx.answered=true;
+  const Q=qx.list[qx.i], e=Q.e, ok=z===e.z; record(e.z,ok);
+  if(ok) qx.ok++; else if(!qx.miss.includes(e)) qx.miss.push(e);
+  document.querySelectorAll("#choices button").forEach(b=>{b.disabled=true; if(+b.dataset.z===e.z) b.classList.add("ok"); else if(+b.dataset.z===z) b.classList.add("ng");});
+  const fb=document.getElementById("feedback"); fb.hidden=false;
+  const last=qx.i===qx.list.length-1;
+  fb.innerHTML=`<div class="res ${ok?"ok":"ng"}">${ok?"正解！":"ざんねん… 正解は "+esc(QT[Q.t].opt(e))}</div>
+    <p><b>${e.z}　${esc(e.sym)}　${esc(e.name)}</b>　${posText(e)}</p>${firstUse(e)?`<p>${esc(firstUse(e))}</p>`:""}
+    <div class="fbrow"><button class="primary" id="qNext">${last?"結果を見る":"次へ"}</button><button class="link" id="qMore">詳しく見る</button></div>`;
+  document.getElementById("qNext").onclick=quizNext; document.getElementById("qMore").onclick=()=>openCard(e.z);
+  document.getElementById("qNext").focus();
+  document.getElementById("quizScore").textContent=`正解 ${qx.ok}`;
+}
+function quizNext(){ if(!qx.answered) return; qx.i++; if(qx.i>=qx.list.length) return quizFinish(); quizRender(); }
+function quizFinish(){
+  document.getElementById("quizSession").hidden=true; const d=document.getElementById("quizDone"); d.hidden=false;
+  const n=qx.list.length, pct=Math.round(100*qx.ok/n);
+  const msg=pct===100?"全問正解！":pct>=80?"よくできました":pct>=50?"あと少し！":"カードで復習してから再挑戦しよう";
+  d.innerHTML=`<h2>結果</h2><p class="score">${qx.ok} / ${n}</p><p>${msg}（正答率 ${pct}%）</p>
+    ${qx.miss.length?`<p>間違えた元素（タップで詳しく）</p><div class="mlist">${qx.miss.map(e=>`<button data-z="${e.z}">${esc(e.sym)} ${esc(e.name)}</button>`).join("")}</div>`:""}
+    <div class="donebtns">${qx.miss.length?`<button class="primary" id="qdMiss">間違えた元素だけもう一度</button>`:""}<button class="ghost" id="qdAgain">もう一度</button><button class="ghost" id="qdBack">設定に戻る</button></div>`;
+  d.querySelectorAll(".mlist button").forEach(b=>b.onclick=()=>openCard(+b.dataset.z));
+  if(qx.miss.length) document.getElementById("qdMiss").onclick=()=>quizStart(qx.miss.slice());
+  document.getElementById("qdAgain").onclick=()=>quizStart();
+  document.getElementById("qdBack").onclick=quizBack;
+}
+function quizBack(){["quizSession","quizDone"].forEach(id=>document.getElementById(id).hidden=true); document.getElementById("quizSetup").hidden=false; refreshSetups();}
+document.getElementById("quizStart").onclick=()=>quizStart();
+document.getElementById("quizQuit").onclick=quizBack;
+
+function refreshSetups(){ fillRange(flashRange,"flashRange","n20"); fillRange(quizRange,"quizRange","n20"); fillTypes(); flashInfo(); quizInfo(); }
+function studyKeys(ev){
+  if(ev.target.tagName==="SELECT") return;
+  if(S.view==="flash" && !document.getElementById("flashSession").hidden){
+    if(ev.key===" "||ev.key==="Enter"){ev.preventDefault(); flashFlip();}
+    if(ev.key==="ArrowLeft") flashAnswer(false);
+    if(ev.key==="ArrowRight") flashAnswer(true);
+  }
+  if(S.view==="quiz" && !document.getElementById("quizSession").hidden){
+    if(!qx.answered && ["1","2","3","4"].includes(ev.key)){ const b=document.querySelectorAll("#choices button")[+ev.key-1]; if(b) b.click(); }
+    else if(qx.answered && ev.key==="Enter" && ev.target.id!=="qNext"){ ev.preventDefault(); quizNext(); }
+  }
+}
+
+build(); refreshSetups(); showView(VIEWS.includes(S.view)?S.view:"table");
+</script>
+</body>
+</html>
